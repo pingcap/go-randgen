@@ -15,6 +15,8 @@ mysql -h localhost -P 3306 -u root -p123456 -D test < output.data.sql > mysql.ou
 在当前目录下看到`output.data.sql`即是生成的ddl和dml，
 `output.rand.sql`即是根据yy文件生成的查询
 
+使用的是系统默认的zz文件，位于`resource/resource/default.zz.lua`
+
 和randgen细节上的不同：
  1. 关键字（`_`）以及非终结符的左右务必留空格
  2. 对于unsigned类型的变量, 框架会进行10次重试直到生成正值, 如果10次重试都没能生成正值,直接赋值1
