@@ -76,25 +76,25 @@ func randgenAction(cmd *cobra.Command, args []string) {
 
 	yy := string(yyBs)
 
-	ddls, err := gendata.ByZz(zz)
+	ddls, keyf, err := gendata.ByZz(zz)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	randomSqls, err := grammar.ByYy(yy, queries, root)
+	randomSqls, err := grammar.ByYy(yy, queries, root, keyf)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	if breake {
 		err := ioutil.WriteFile(outPath+".data.sql",
-			[]byte(strings.Join(ddls, "\n")), os.ModePerm)
+			[]byte(strings.Join(ddls, ";\n") + ";"), os.ModePerm)
 		if err != nil {
 			log.Printf("write ddl in dist fail, %v\n", err)
 		}
 
 		err = ioutil.WriteFile(outPath+".rand.sql",
-			[]byte(strings.Join(randomSqls, "\n")), os.ModePerm)
+			[]byte(strings.Join(randomSqls, ";\n") + ";"), os.ModePerm)
 		if err != nil {
 			log.Printf("write random sql in dist fail, %v\n", err)
 		}
@@ -104,7 +104,7 @@ func randgenAction(cmd *cobra.Command, args []string) {
 		allSqls = append(allSqls, randomSqls...)
 
 		err = ioutil.WriteFile(outPath + ".sql",
-			[]byte(strings.Join(allSqls, "\n")), os.ModePerm)
+			[]byte(strings.Join(allSqls, ";\n") + ";"), os.ModePerm)
 		if err != nil {
 			log.Printf("sql output error, %v\n", err)
 		}

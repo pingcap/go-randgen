@@ -3,18 +3,20 @@ package yacc_parser
 import (
 	"errors"
 	"fmt"
+	"runtime/debug"
 )
 
 // 代表一个分支中的token序列
 type Seq struct {
-	Items []token
+	Items []Token
 }
 
-// 代表一个bnf表达式
+// one bnf expression
 type Production struct {
-	// bnf表达式的左边
-	Head  token
-	// bnf表达式的右边 每个Seq代表一个可行的分支
+	// left value of bnf expression
+	Head Token
+	// right expression of bnf expression,
+	// every Seq represents a branch of this expression
 	Alter []Seq
 }
 
@@ -28,7 +30,7 @@ const (
 	endState             = 4
 )
 
-func skipComment(nextToken func() (token, error)) (t token, err error)  {
+func skipComment(nextToken func() (Token, error)) (t Token, err error)  {
 	for {
 		t, err = nextToken()
 		if err != nil {
@@ -41,20 +43,20 @@ func skipComment(nextToken func() (token, error)) (t token, err error)  {
 	}
 }
 
-func Parse(nextToken func() (token, error)) ([]Production, error) {
-	var tkn token
+func Parse(nextToken func() (Token, error)) ([]Production, error) {
+	var tkn Token
 	var prods []Production
 	var p Production
 	var s Seq
-	var lastTerm token
+	var lastTerm Token
 
 	state := initState
 	t, err := skipComment(nextToken)
 	if err != nil {
 		return nil, err
 	}
-	if isTknNonTerminal(t) {
-		return nil, fmt.Errorf("%s is not nonterminal", t.toString())
+	if !IsTknNonTerminal(t) {
+		return nil, fmt.Errorf("%s is not nonterminal", t.ToString())
 	}
 
 	p.Head = t
@@ -69,19 +71,16 @@ func Parse(nextToken func() (token, error)) ([]Production, error) {
 		}
 		switch state {
 		case initState:
-			if tkn.toString() != ":" {
+			if tkn.ToString() != ":" {
 				return nil, errors.New("expect ':'")
 			}
 			state = delimFetchedState
 		case delimFetchedState:
-			_, isNt := tkn.(*nonTerminal)
-			_, isT := tkn.(*terminal)
-			_, isKw := tkn.(*keyword)
-			if !isNt && !isT && !isKw {
-				return nil, fmt.Errorf("%s is not nonterminal, terminal or keyword")
+			if isOperator(tkn) {
+				continue
 			}
 			state = termFetchedState
-			// token of one branch
+			// Token of one branch
 			s.Items = append(s.Items, tkn)
 		case termFetchedState:
 			switch v := tkn.(type) {
@@ -98,7 +97,7 @@ func Parse(nextToken func() (token, error)) ([]Production, error) {
 				lastTerm = v
 				state = prepareNextProdState
 			}
-			// if one branch has many token, it will always in this state
+			// if one branch has many Token, it will always in this state
 		case prepareNextProdState:
 			switch v := tkn.(type) {
 			case *eof:
@@ -116,6 +115,10 @@ func Parse(nextToken func() (token, error)) ([]Production, error) {
 					p.Alter = append(p.Alter, s)
 					s = Seq{}
 					prods = append(prods, p)
+					if !IsTknNonTerminal(lastTerm) {
+						return nil, fmt.Errorf("%s is not nonterminal \n %s",
+							lastTerm.ToString(), debug.Stack())
+					}
 					p = Production{Head: lastTerm}
 				}
 				state = delimFetchedState

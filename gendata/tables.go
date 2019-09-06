@@ -14,7 +14,7 @@ type Tables struct {
 
 var tablesTmpl = mustParse("tables", "create table {{.tname}} (\n" +
 "`pk` int primary key%s\n" +
-") {{.charsets}} {{.partitions}}\n")
+") {{.charsets}} {{.partitions}}")
 
 // support vars
 var tablesVars = []*varWithDefault{

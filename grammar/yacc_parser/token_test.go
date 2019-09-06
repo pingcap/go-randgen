@@ -84,7 +84,7 @@ func withTokenizeResult(t *testing.T, origin string, visitor func(index int, tkn
 		if isEOF(tkn) {
 			break
 		}
-		visitor(i, tkn.toString())
+		visitor(i, tkn.ToString())
 	}
 }
 
@@ -102,7 +102,7 @@ faad
 
 		fmt.Println("=========")
 		fmt.Printf("%T\n", tkn)
-		fmt.Println(tkn.toString())
+		fmt.Println(tkn.ToString())
 
 		if isEOF(tkn) {
 			break

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/yuin/gopher-lua"
+	"math/rand"
 	"strconv"
 	"strings"
 )
@@ -52,24 +53,24 @@ func (z *ZzConfig) genDdls() ([]*tableStmt, []*fieldExec, error) {
 	return tableStmts, fieldExecs, nil
 }
 
-func ByZz(zz string) ([]string, error) {
+func ByZz(zz string) ([]string, Keyfun, error) {
 	l ,err := runLua(zz)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	config, err := newZzConfig(l)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return  ByConfig(config)
 }
 
-func ByConfig(config *ZzConfig) ([]string, error)  {
+func ByConfig(config *ZzConfig) ([]string, Keyfun, error)  {
 	tableStmts, fieldExecs, err := config.genDdls()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	recordGor := config.Data.getRecordGen(fieldExecs)
@@ -86,7 +87,7 @@ func ByConfig(config *ZzConfig) ([]string, error)  {
 		sqls = append(sqls, wrapInInsert(tableStmt.name, valuesStmt))
 	}
 
-	return sqls, nil
+	return sqls, newKeyfun(tableStmts, fieldExecs), nil
 }
 
 const insertTemp = "insert into %s values %s"
@@ -114,4 +115,24 @@ func wrapInDml(pk string, data []string) string {
 }
 
 
+type Keyfun map[string]func() string
 
+func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
+	m := map[string]func() string{
+		"_table": func() string {
+			return tables[rand.Intn(len(tables))].name
+		},
+		"_field": func() string {
+			return "`" + fields[rand.Intn(len(fields))].name + "`"
+		},
+	}
+
+	return Keyfun(m)
+}
+
+func (k Keyfun) Gen(key string) (string, bool)  {
+	if kf, ok := k[key]; ok {
+		return kf(), true
+	}
+	return "", false
+}

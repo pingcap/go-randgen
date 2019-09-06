@@ -7,12 +7,12 @@ import (
 	"unicode"
 )
 
-type token interface {
-	toString() string
+type Token interface {
+	ToString() string
 }
 type eof struct{}
 
-func (*eof) toString() string {
+func (*eof) ToString() string {
 	return "EOF"
 }
 
@@ -21,7 +21,7 @@ type operator struct {
 	val string
 }
 
-func (op *operator) toString() string {
+func (op *operator) ToString() string {
 	return op.val
 }
 
@@ -29,7 +29,7 @@ type keyword struct {
 	val string
 }
 
-func (kw *keyword) toString() string {
+func (kw *keyword) ToString() string {
 	return kw.val
 }
 
@@ -37,7 +37,7 @@ type nonTerminal struct {
 	val string
 }
 
-func (nt *nonTerminal) toString() string {
+func (nt *nonTerminal) ToString() string {
 	return nt.val
 }
 
@@ -45,7 +45,7 @@ type terminal struct {
 	val string
 }
 
-func (t *terminal) toString() string {
+func (t *terminal) ToString() string {
 	return t.val
 }
 
@@ -53,7 +53,7 @@ type comment struct {
 	val string
 }
 
-func (c *comment) toString() string {
+func (c *comment) ToString() string {
 	return c.val
 }
 
@@ -115,11 +115,11 @@ func skipSpace(reader io.RuneScanner) (r rune, err error) {
 	}
 }
 
-// Tokenize is used to wrap a reader into a token producer.
+// Tokenize is used to wrap a reader into a Token producer.
 // simple lexer not look back, have some problem when quote not pair
-func Tokenize(reader io.RuneScanner) func() (token, error) {
+func Tokenize(reader io.RuneScanner) func() (Token, error) {
 	q := quote{0}
-	return func() (token, error) {
+	return func() (Token, error) {
 		var r rune
 		var err error
 		// Skip spaces.
@@ -232,17 +232,42 @@ func isNonTerminal(token string) bool {
 	return true
 }
 
-func isEOF(tkn token) bool {
+func isEOF(tkn Token) bool {
 	_, ok := tkn.(*eof)
 	return ok
 }
 
-func isComment(tkn token) bool {
+func isComment(tkn Token) bool {
 	_, ok := tkn.(*comment)
 	return ok
 }
 
-func isTknNonTerminal(tkn token) bool {
+func IsTknNonTerminal(tkn Token) bool {
 	_, ok := tkn.(*nonTerminal)
 	return ok
+}
+
+func IsTerminal(tkn Token) bool {
+	_, ok := tkn.(*terminal)
+	return ok
+}
+
+func IsKeyword(tkn Token) bool {
+	_, ok := tkn.(*keyword)
+	return ok
+}
+
+func isOperator(tkn Token) bool {
+	_, ok := tkn.(*operator)
+	return ok
+}
+
+func NonTerminalNotInMap(pmap map[string]Production, tkn Token) bool  {
+	non, ok := tkn.(*nonTerminal)
+	if !ok {
+		return false
+	}
+
+	_, ok = pmap[non.ToString()]
+	return !ok
 }

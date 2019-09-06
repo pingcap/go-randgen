@@ -2,16 +2,15 @@ package sql_generator
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"go-randgen/gendata"
 	"go-randgen/grammar/yacc_parser"
 	"io"
 	"math/rand"
-	"strings"
-	"time"
-
 )
 
-const maxLoopback = 2
+const maxLoopback = 5
 const maxBuildTreeTime = 10 * 1000
 
 type node interface {
@@ -153,61 +152,6 @@ func (pn *productionNode) pruneTerminator() {
 	pn.pruned = true
 }
 
-func newProductionNode(production yacc_parser.Production, parent *expressionNode) *productionNode {
-	return &productionNode{
-		name:   production.Head,
-		exprs:  make([]*expressionNode, len(production.Alter)),
-		parent: parent,
-	}
-}
-
-func newExpressionNode(seq yacc_parser.Seq, parent *productionNode) *expressionNode {
-	return &expressionNode{
-		items:  make([]node, len(seq.Items)),
-		parent: parent,
-	}
-}
-
-func literal(token string) (string, bool) {
-	if strings.HasPrefix(token, "'") && strings.HasSuffix(token, "'") {
-		return strings.Trim(token, "'"), true
-	}
-	return "", false
-}
-
-var startBuildTree int64
-
-func buildTree(productionName string, parent *expressionNode) node {
-	startTime := time.Now().UnixNano() / 1e6
-	if startTime-startBuildTree > maxBuildTreeTime {
-		println("build tree time over", maxBuildTreeTime, "ms")
-		return &terminator{}
-	}
-	if parent != nil && parent.loopbackDetection(productionName, 0) {
-		return &terminator{}
-	}
-	production, exist := productionMap[productionName]
-	if !exist {
-		panic(fmt.Sprintf("Production '%s' not found", productionName))
-	}
-	root := newProductionNode(production, parent)
-	for i, seq := range production.Alter {
-		root.exprs[i] = newExpressionNode(seq, root)
-		for j, item := range seq.Items {
-			if literalStr, isLiteral := literal(item); isLiteral {
-				root.exprs[i].items[j] = &literalNode{value: literalStr}
-			} else {
-				root.exprs[i].items[j] = buildTree(item, root.exprs[i])
-			}
-		}
-	}
-	useTime := time.Now().UnixNano()/1e6 - startTime
-	if useTime > 5 {
-		println("build tree", productionName, "use", useTime, "ms")
-	}
-	return root
-}
-
 // SQLIterator is a iterator interface of sql generator
 type SQLIterator interface {
 
@@ -215,8 +159,7 @@ type SQLIterator interface {
 	HasNext() bool
 
 	// Next returns next sql case in iterator
-	// it will panic when the iterator doesn't exist next sql case
-	Next() string
+	Next() (string, error)
 }
 
 // SQLSequentialIterator is a iterator of sql generator
@@ -250,58 +193,26 @@ func (i *SQLSequentialIterator) Next() string {
 	return stringBuffer.String()
 }
 
-var productionMap map[string]yacc_parser.Production
-
-func checkProductionMap() {
-	for _, production := range productionMap {
-		for _, seqs := range production.Alter {
-			for _, seq := range seqs.Items {
-				if _, isLiteral := literal(seq); isLiteral {
-					continue
-				}
-				if _, exist := productionMap[seq]; !exist {
-					panic(fmt.Sprintf("Production '%s' not found", seq))
-				}
-			}
-		}
-	}
-}
-
-func initProductionMap(productions []yacc_parser.Production) {
-	productionMap = make(map[string]yacc_parser.Production)
+func initProductionMap(productions []yacc_parser.Production) map[string]yacc_parser.Production {
+	// Head string -> production
+	productionMap := make(map[string]yacc_parser.Production)
 	for _, production := range productions {
-		if pm, exist := productionMap[production.Head]; exist {
+		if pm, exist := productionMap[production.Head.ToString()]; exist {
 			pm.Alter = append(pm.Alter, production.Alter...)
-			productionMap[production.Head] = pm
+			productionMap[production.Head.ToString()] = pm
 			continue
 		}
-		productionMap[production.Head] = production
+		productionMap[production.Head.ToString()] = production
 	}
-	checkProductionMap()
-}
 
-// GenerateSQLSequentially returns a `SQLSequentialIterator` which can generate sql case by case sequential
-// productions is a `Production` array created by `yacc_parser.Parse`
-// productionName assigns a production name as the root node.
-func GenerateSQLSequentially(productions []yacc_parser.Production, productionName string) SQLIterator {
-	println("finish parse bnf file")
-	initProductionMap(productions)
-	println("finish create production map, map size:", len(productionMap))
-	startBuildTree = time.Now().UnixNano() / 1e6
-	pNode := buildTree(productionName, nil).(*productionNode)
-	println("finish build tree")
-	pNode.pruneTerminator()
-	println("finish prune terminator branch")
-	return &SQLSequentialIterator{
-		root:             pNode,
-		alreadyPointNext: true,
-		noNext:           false,
-	}
+	return productionMap
 }
 
 // SQLRandomlyIterator is a iterator of sql generator
 type SQLRandomlyIterator struct {
 	productionName string
+	productionMap map[string]yacc_parser.Production
+	keyFunc gendata.Keyfun
 }
 
 // HasNext returns whether the iterator exists next sql case
@@ -311,31 +222,34 @@ func (i *SQLRandomlyIterator) HasNext() bool {
 
 // Next returns next sql case in iterator
 // it will panic when the iterator doesn't exist next sql case
-func (i *SQLRandomlyIterator) Next() string {
+func (i *SQLRandomlyIterator) Next() (string, error) {
 	stringBuffer := bytes.NewBuffer([]byte{})
-	generateSQLRandomly(i.productionName, nil, stringBuffer)
-	output := stringBuffer.String()
-	if strings.Contains(output, "####Terminator####") {
-		return i.Next()
+	err := i.generateSQLRandomly(i.productionName,nil, stringBuffer)
+	if err != nil {
+		return "", err
 	}
-	return output
+	return stringBuffer.String(), nil
 }
 
 // GenerateSQLSequentially returns a `SQLSequentialIterator` which can generate sql case by case randomly
 // productions is a `Production` array created by `yacc_parser.Parse`
 // productionName assigns a production name as the root node.
-func GenerateSQLRandomly(productions []yacc_parser.Production, productionName string) SQLIterator {
-	initProductionMap(productions)
+func GenerateSQLRandomly(productions []yacc_parser.Production, keyFunc gendata.Keyfun, productionName string) (SQLIterator, error) {
+	pMap := initProductionMap(productions)
+
 	return &SQLRandomlyIterator{
 		productionName: productionName,
-	}
+		productionMap:pMap,
+		keyFunc:keyFunc,
+	}, nil
 }
 
-func generateSQLRandomly(productionName string, parents []string, writer io.StringWriter) {
-	// 获得根节点
-	production, exist := productionMap[productionName]
+func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
+	parents []string, writer io.StringWriter) error {
+	// get root production
+	production, exist := i.productionMap[productionName]
 	if !exist {
-		panic(fmt.Sprintf("Production '%s' not found", productionName))
+		return fmt.Errorf("Production '%s' not found", productionName)
 	}
 	sameParentNum := 0
 	for _, parent := range parents {
@@ -344,31 +258,39 @@ func generateSQLRandomly(productionName string, parents []string, writer io.Stri
 		}
 	}
 	if sameParentNum >= maxLoopback {
-		_, err := writer.WriteString("####Terminator####")
-		if err != nil {
-			panic("fail to write `io.StringWriter`")
-		}
-		return
+		return fmt.Errorf("%s recursive num exceed max loop back %d", productionName, maxLoopback)
 	}
 	parents = append(parents, productionName)
-	// 随机选择一个分支
-	seqs := production.Alter[rand.Intn(len(production.Alter))]
-	for _, seq := range seqs.Items {
-		if literalStr, isLiteral := literal(seq); isLiteral {
-			// 字面量
-			if literalStr != "" {
-				_, err := writer.WriteString(literalStr)
+	// random an alter
+	selectIndex := rand.Intn(len(production.Alter))
+	seqs := production.Alter[selectIndex]
+	for _, item := range seqs.Items {
+		if yacc_parser.IsTerminal(item) || yacc_parser.NonTerminalNotInMap(i.productionMap, item) {
+			// terminal
+			_, err := writer.WriteString(item.ToString() + " ")
+			if err != nil {
+				return errors.New("fail to write `io.StringWriter`")
+			}
+		} else if yacc_parser.IsKeyword(item) {
+			// key word parse
+			if res, ok := i.keyFunc.Gen(item.ToString()); ok {
+				_, err := writer.WriteString(res + " ")
 				if err != nil {
-					panic("fail to write `io.StringWriter`")
+					return errors.New("fail to write `io.StringWriter`")
 				}
-				_, err = writer.WriteString(" ")
-				if err != nil {
-					panic("fail to write `io.StringWriter`")
-				}
+			} else {
+				return fmt.Errorf("'%s' key word not support", item.ToString())
 			}
 		} else {
-			// 非字面量则递归生成
-			generateSQLRandomly(seq, parents, writer)
+			// nonTerminal recursive
+			err := i.generateSQLRandomly(item.ToString(), parents, writer)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
 }
+
+

@@ -5,5 +5,8 @@
 # IntelliJ project files
 .idea
 *.iml
+*.out
+*.sql
+go-randgen
 out
 gen
