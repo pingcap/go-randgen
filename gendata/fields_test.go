@@ -1,7 +1,6 @@
 package gendata
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -20,12 +19,12 @@ fields = {
 	fields, err := newFields(l)
 	assert.Equal(t, nil, err)
 
-	stmts, err := fields.gen()
+	stmts, _, err := fields.gen()
 	assert.Equal(t, nil, err)
 
-	assert.Equal(t, 14, len(stmts))
+	assert.Equal(t, 21, len(stmts))
 
-	for _, stmt := range stmts {
+/*	for _, stmt := range stmts {
 		fmt.Println(stmt)
-	}
+	}*/
 }

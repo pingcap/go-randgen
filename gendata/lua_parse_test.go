@@ -30,9 +30,8 @@ data = {
 func TestExtractSlice(t *testing.T) {
 	l := lua.NewState()
 	defer l.Close()
-	if err := l.DoString(testLuaScript); err != nil {
-		panic(err)
-	}
+	err := l.DoString(testLuaScript)
+	assert.Equal(t, nil, err)
 
 	result, err := extractSlice(l, "tables", "rows", []string{})
 
@@ -43,4 +42,22 @@ func TestExtractSlice(t *testing.T) {
 
 	result, err = extractSlice(l, "tables", "aaaa", defaul)
 	assert.Equal(t, defaul, result)
+}
+
+func TestExtractAllSlice(t *testing.T) {
+	l := lua.NewState()
+	defer l.Close()
+	err := l.DoString(testLuaScript)
+	assert.Equal(t, nil, err)
+
+	content, err := extractAllSlice(l, "data")
+	assert.Equal(t, nil, err)
+
+	numbers, ok := content["numbers"]
+	assert.Equal(t, true, ok)
+	assert.Equal(t, []string{"null", "tinyint", "smallint","12.991"}, numbers)
+
+	strings, ok := content["strings"]
+	assert.Equal(t, true, ok)
+	assert.Equal(t, []string{"null", "letter", "english", "string(15)"}, strings)
 }

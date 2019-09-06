@@ -1,15 +1,12 @@
 package gendata
 
 import (
-	"bytes"
+	"fmt"
 	"github.com/yuin/gopher-lua"
+	"strings"
 )
 
-type fieldsCtx struct {
-	canUnSign bool
-}
-
-var fieldsTmpl = mustParse("fields", `{{.fname}} {{.types}} {{.sign}} {{.keys}}`)
+var fieldsTmpl = mustParse("fields", "`{{.fname}}` {{.types}} {{.sign}} {{.keys}}")
 
 var fieldVars = []*varWithDefault{
 	{
@@ -17,54 +14,64 @@ var fieldVars = []*varWithDefault{
 		[]string{"int", "varchar", "date", "time", "datetime"},
 	},
 	{
-		"sign",
-		[]string{"undef"},
-	},
-	{
 		"keys",
 		[]string{"undef", "key"},
+	},
+	// to ensure ignore efficient, sign should always be the last
+	{
+		"sign",
+		[]string{"undef"},
 	},
 }
 
 // https://dev.mysql.com/doc/refman/8.0/en/numeric-type-overview.html
 var canUnSign = map[string]bool{
-	"tinyint": true,
-	"smallint": true,
+	"tinyint":   true,
+	"smallint":  true,
 	"mediumint": true,
-	"int": true,
-	"integer": true,
-	"bigint": true,
-	"float": true,
-	"double": true,
-	"decimal": true,
+	"int":       true,
+	"integer":   true,
+	"bigint":    true,
+	"float":     true,
+	"double":    true,
+	"decimal":   true,
 }
 
-
-var fieldFuncs = map[string]func(string, *fieldsCtx) (target string, ignore bool, err error){
-	"types": func(text string, ctx *fieldsCtx) (string, bool, error) {
-		if canUnSign[text] {
+var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec) (target string,
+	ignore bool, extraStmt *string, err error){
+	"types": func(text string, fname string, ctx *fieldExec) (string, bool, *string, error) {
+		index := strings.Index(text, "(")
+		var tp string
+		if index != -1 {
+			tp = text[:index]
+		} else {
+			tp = text
+		}
+		if canUnSign[tp] {
 			ctx.canUnSign = true
 		}
-		return text, false, nil
+		return text, false, nil, nil
+	},
+	"keys": func(text string, fname string, ctx *fieldExec) (string, bool, *string, error) {
+		if text == "undef" {
+			return "", false, nil, nil
+		}
+		extraStmt := fmt.Sprintf("key (`%s`)", fname)
+		return "", false, &extraStmt, nil
 	},
 	// "signed" is sign, other is "unsigned"
-	"sign": func(text string, ctx *fieldsCtx) (string, bool, error) {
+	"sign": func(text string, fname string, ctx *fieldExec) (string, bool, *string, error) {
 		if ctx.canUnSign {
 			if text == "signed" {
-				return "", false, nil
+				return "", false, nil, nil
 			}
-			return "unsigned", false, nil
+			ctx.unsign = true
+			return "unsigned", false, nil, nil
 		} else if text != "signed" {
-			return "", true, nil
+			return "", true, nil, nil
 		}
 
-		return "", false, nil
-	},
-	"keys": func(text string, ctx *fieldsCtx) (string, bool, error) {
-		if text == "undef" {
-			return "", false, nil
-		}
-		return "unique key", false, nil
+		return "", false, nil, nil
 	},
 }
 
@@ -81,42 +88,64 @@ func newFields(l *lua.LState) (*Fields, error) {
 	return &Fields{o}, nil
 }
 
-func (f *Fields) gen() ([]string, error) {
+func (f *Fields) gen() ([]string, []*fieldExec, error) {
 	fnamePrefix := "col"
 
-	fnameBuf := &bytes.Buffer{}
 	m := make(map[string]string)
 	stmts := make([]string, 0, f.numbers)
+	extraStmts := make([]string, 0)
+	fieldExecs := make([]*fieldExec, 0, f.numbers)
 
 	err := f.traverse(func(cur []string) error {
-		fnameBuf.Reset()
-		fnameBuf.WriteString(fnamePrefix)
-		fCtx := &fieldsCtx{}
+		fExec := &fieldExec{}
+
+		fname := fnamePrefix + "_" + strings.Join(cur, "_")
+		extraNum := 0
 
 		for i := range cur {
 			field := f.fields[i]
-			fnameBuf.WriteString("_" + cur[i])
-			target, ignore, err := fieldFuncs[field](cur[i], fCtx)
+			if field == "types" {
+				fExec.tp = cur[i]
+			}
+			target, ignore, extraStmt, err := fieldFuncs[field](cur[i], fname, fExec)
 			if err != nil {
 				return err
 			}
 			// may be inefficient, prune tree may be better
 			if ignore {
+				// delete related extraNum
+				extraStmts = extraStmts[0 : len(extraStmts)-extraNum]
 				return nil
 			}
 
+			if extraStmt != nil {
+				extraNum++
+				extraStmts = append(extraStmts, *extraStmt)
+			}
 			m[field] = target
 		}
 
-		m["fname"] = fnameBuf.String()
+		m["fname"] = fname
+		fExec.name = fname
 
+		fieldExecs = append(fieldExecs, fExec)
 		stmts = append(stmts, f.format(m))
 		return nil
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fieldExecs, err
 	}
 
-	return stmts, nil
+	stmts = append(stmts, extraStmts...)
+
+	return stmts, fieldExecs, nil
+}
+
+type fieldExec struct {
+	canUnSign bool
+	unsign    bool
+	name      string
+	// tp writen by user zz file
+	tp string
 }

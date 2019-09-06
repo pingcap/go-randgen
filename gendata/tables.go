@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"github.com/yuin/gopher-lua"
 	"strconv"
+	"strings"
 )
 
 type Tables struct {
 	*options
 }
 
-var tablesTmpl = mustParse("tables", `create table {{.tname}} (
-	pk int primary key%s
-) {{.charsets}} {{.partitions}}
-`)
+var tablesTmpl = mustParse("tables", "create table {{.tname}} (\n" +
+"`pk` int primary key%s\n" +
+") {{.charsets}} {{.partitions}}\n")
 
 // support vars
 var tablesVars = []*varWithDefault{
@@ -71,11 +71,6 @@ func newTables(l *lua.LState) (*Tables, error) {
 	return &Tables{o}, nil
 }
 
-type tableStmt struct {
-	format string
-	rowNum int
-}
-
 func (t *Tables) gen() ([]*tableStmt, error) {
 	tnamePrefix := "table"
 
@@ -99,7 +94,11 @@ func (t *Tables) gen() ([]*tableStmt, error) {
 			m[field] = target
 		}
 
-		m["tname"] = buf.String()
+		tname := buf.String()
+
+		stmt.name = tname
+
+		m["tname"] = tname
 
 		stmt.format = t.format(m)
 
@@ -113,4 +112,19 @@ func (t *Tables) gen() ([]*tableStmt, error) {
 	}
 
 	return stmts, nil
+}
+
+type tableStmt struct {
+	format string
+	name string
+	rowNum int
+	// generate by wrapInTable
+	ddl string
+}
+
+func (t *tableStmt) wrapInTable(fieldStmts []string) {
+	buf := &bytes.Buffer{}
+	buf.WriteString(",\n")
+	buf.WriteString(strings.Join(fieldStmts, ",\n"))
+	t.ddl = fmt.Sprintf(t.format, buf.String())
 }

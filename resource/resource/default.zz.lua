@@ -19,5 +19,5 @@ data = {
         '0.00000001', '0.999999999', '-0.999999999',
         'decimal',
     },
-    strings = {'null', 'letter', 'english', 'string(15)'}
+    strings = {'null', 'letter', 'english'},
 }

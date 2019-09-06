@@ -16,6 +16,16 @@ func runLua(script string) (*lua.LState, error) {
 	return l, nil
 }
 
+func extractSliceTable(tab *lua.LTable) []string {
+	content := make([]string, 0, tab.Len())
+
+	tab.ForEach(func(key lua.LValue, value lua.LValue) {
+		content = append(content, value.String())
+	})
+
+	return content
+}
+
 // extract vals from two layer table by key1 and key2
 // if key1 not exist, will have a error
 // if key2 not exist, will return defaul
@@ -36,12 +46,28 @@ func extractSlice(l *lua.LState, key1 string, key2 string, defaul []string) ([]s
 		return nil, fmt.Errorf("%s.%s must be a lua Table", key1, key2)
 	}
 
-	rows := make([]string, 0, key2Table.Len())
+	return extractSliceTable(key2Table), nil
+}
 
-	key2Table.ForEach(func(key lua.LValue, value lua.LValue) {
-		rows = append(rows, value.String())
+func extractAllSlice(l *lua.LState, key string) (map[string][]string, error)  {
+	val := l.Env.RawGetString(key)
+	valTable, ok := val.(*lua.LTable)
+	if !ok {
+		return nil, fmt.Errorf("%s must be a lua Table", key)
+	}
+
+	res := make(map[string][]string)
+	var err error
+	valTable.ForEach(func(key2 lua.LValue, value lua.LValue) {
+		table, ok := value.(*lua.LTable)
+		if !ok {
+			err = fmt.Errorf("%s.%s must be a lua Table", key, key2.String())
+			return
+		}
+
+		res[key2.String()] = extractSliceTable(table)
 	})
 
-	return rows, nil
+	return res, err
 }
 
