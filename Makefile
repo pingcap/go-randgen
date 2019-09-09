@@ -10,4 +10,4 @@ bin:
 test:
 	go test ./...
 
-.PHONY: resource bin test
+.PHONY: all resource bin test

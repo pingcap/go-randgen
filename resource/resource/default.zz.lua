@@ -1,9 +1,9 @@
 tables = {
-    rows = {10, 20, 30, 40, 50, 60, 70, 80, 90},
+    rows = {10, 20, 30, 90},
     -- SHOW CHARACTER SET;
-    charsets = {'utf8', 'utf8mb4', 'ascii', 'latin1', 'binary'},
+    charsets = {'utf8', 'latin1', 'binary'},
     -- partition number
-    partitions = {4, 6, 8, 15, 'undef'},
+    partitions = {4, 6, 'undef'},
 }
 
 fields = {

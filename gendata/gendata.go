@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/yuin/gopher-lua"
+	"go-randgen/gendata/generators"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -124,6 +125,36 @@ func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 		},
 		"_field": func() string {
 			return "`" + fields[rand.Intn(len(fields))].name + "`"
+		},
+		"_int": func() string {
+			return generators.Get("int").Gen()
+		},
+		"_tinyint": func() string {
+			return generators.Get("tinyint").Gen()
+		},
+		"_digit": func() string {
+			return generators.Get("digit").Gen()
+		},
+		"_letter": func() string {
+			return generators.Get("letter").Gen()
+		},
+		"_date": func() string {
+			return generators.Get("date").Gen()
+		},
+		"_year": func() string {
+			return generators.Get("year").Gen()
+		},
+		"_time": func() string {
+			return generators.Get("time").Gen()
+		},
+		"_datetime": func() string {
+			return generators.Get("datetime").Gen()
+		},
+		"_timestamp": func() string {
+			return generators.Get("timestamp").Gen()
+		},
+		"_english": func() string {
+			return generators.Get("english").Gen()
 		},
 	}
 

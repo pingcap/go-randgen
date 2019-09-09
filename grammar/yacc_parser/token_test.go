@@ -20,31 +20,40 @@ func TestTokenize(t *testing.T) {
 		},
 		{
 			`this: is a test with 'colon appears inside a string :)'`,
-			[]string{"this", ":", "is", "a", "test", "with", "colon appears inside a string :)"},
+			[]string{"this", ":", "is", "a", "test", "with", "'colon appears inside a string :)'"},
 		},
 		{
 			`a: 'b' c`,
-			[]string{"a", ":", "b", "c"},
+			[]string{"a", ":", "'b'", "c"},
 		},
 		{
 			`a: '"b' "'c"`,
-			[]string{"a", ":", `"b`, `'c`},
+			[]string{"a", ":", `'"b'`, `"'c"`},
 		},
 		{
 			`a: 'b"' "c'"`,
-			[]string{"a", ":", `b"`, `c'`},
+			[]string{"a", ":", `'b"'`, `"c'"`},
 		},
 		{
 			`a: # this is a comment # o
 'b"' "c'"`,
-			[]string{"a", ":", "# this is a comment # o\n", `b"`, `c'`},
+			[]string{"a", ":", "# this is a comment # o\n", `'b"'`, `"c'"`},
+		},
+		{
+			`a: b,d m; count(cc)`,
+			[]string{"a", ":", "b", ",", "d", "m", ";", "count", "(", "cc", ")"},
 		},
 		{
 			`a: /* this is
 a muti line comment
 */
 'b"' /*sss*/ "c'"`,
-			[]string{"a", ":", "/* this is\na muti line comment\n*/", `b"`, "/*sss*/", `c'`},
+			[]string{"a", ":", "/* this is\na muti line comment\n*/", `'b"'`, "/*sss*/", `"c'"`},
+		},
+		{
+			`a: m dd {a = 1;b="aaa"; print(m)} ddd | haha {a = 2 * a; print(a)} nana`,
+			[]string{"a", ":", "m", "dd", `a = 1;b="aaa"; print(m)`, "ddd", "|",
+				"haha", "a = 2 * a; print(a)", "nana"},
 		},
 		{
 			`t1: 'a' 'b' t2
@@ -57,10 +66,10 @@ t2: 'd'
 t3: 'f'
     | 'g' 'h'
 	| 'i'`,
-			[]string{`t1`, `:`, `a`, `b`, `t2`, `|`,
-				`c`, `t3`, `|`, `t2`, `f`, `t3`, `g`, `t2`,
-				`:`, `d`, `|`, `t3`, `e`, `t3`, `:`, `f`,
-				`|`, `g`, `h`, `|`, `i`},
+			[]string{`t1`, `:`, `'a'`, `'b'`, `t2`, `|`,
+				`'c'`, `t3`, `|`, `t2`, `'f'`, `t3`, `'g'`, `t2`,
+				`:`, `'d'`, `|`, `t3`, `'e'`, `t3`, `:`, `'f'`,
+				`|`, `'g'`, `'h'`, `|`, `'i'`},
 		},
 	}
 
@@ -89,11 +98,8 @@ func withTokenizeResult(t *testing.T, origin string, visitor func(index int, tkn
 }
 
 func TestSimpleTokenPrint(t *testing.T) {
-	origin := `a: /* hahah
-faad
-*/
-
-'"b' "'c"`
+	t.SkipNow()
+	origin := `a: m dd {a = 1;b="aaa"; print(m)} ddd | haha {a = 2 * a; print(a)} nana`
 
 	next := Tokenize(bytes.NewBufferString(origin))
 	for {

@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/yuin/gopher-lua"
 	"go-randgen/gendata"
 	"go-randgen/grammar/yacc_parser"
 	"io"
+	"log"
 	"math/rand"
 )
 
@@ -213,6 +215,8 @@ type SQLRandomlyIterator struct {
 	productionName string
 	productionMap map[string]yacc_parser.Production
 	keyFunc gendata.Keyfun
+	luaVM *lua.LState
+	printBuf *bytes.Buffer
 }
 
 // HasNext returns whether the iterator exists next sql case
@@ -231,16 +235,29 @@ func (i *SQLRandomlyIterator) Next() (string, error) {
 	return stringBuffer.String(), nil
 }
 
+func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
+	return func(state *lua.LState) int {
+		buf.WriteString(state.ToString(1))
+		return 0
+	}
+}
+
 // GenerateSQLSequentially returns a `SQLSequentialIterator` which can generate sql case by case randomly
 // productions is a `Production` array created by `yacc_parser.Parse`
 // productionName assigns a production name as the root node.
 func GenerateSQLRandomly(productions []yacc_parser.Production, keyFunc gendata.Keyfun, productionName string) (SQLIterator, error) {
 	pMap := initProductionMap(productions)
+	l := lua.NewState()
+	pBuf := &bytes.Buffer{}
+	// cover the origin lua print function
+	l.SetGlobal("print", l.NewFunction(getLuaPrintFun(pBuf)))
 
 	return &SQLRandomlyIterator{
 		productionName: productionName,
 		productionMap:pMap,
 		keyFunc:keyFunc,
+		luaVM:l,
+		printBuf:pBuf,
 	}, nil
 }
 
@@ -280,6 +297,17 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 				}
 			} else {
 				return fmt.Errorf("'%s' key word not support", item.ToString())
+			}
+		} else if yacc_parser.IsCodeBlock(item){
+			// lua code block
+			if err := i.luaVM.DoString(item.ToString()); err != nil {
+				log.Printf("lua code `%s`, run fail\n %v\n",
+					item.ToString(), err)
+				return err
+			}
+			if i.printBuf.Len() > 0 {
+				writer.WriteString(i.printBuf.String() + " ")
+				i.printBuf.Reset()
 			}
 		} else {
 			// nonTerminal recursive

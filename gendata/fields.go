@@ -20,7 +20,7 @@ var fieldVars = []*varWithDefault{
 	// to ensure ignore efficient, sign should always be the last
 	{
 		"sign",
-		[]string{"undef"},
+		[]string{"signed"},
 	},
 }
 
@@ -37,6 +37,9 @@ var canUnSign = map[string]bool{
 	"decimal":   true,
 }
 
+const enumVals = "('a','b','c','d','e','f','g','h','i','j','k','l'," +
+	"'m','n','o','p','q','r','s','t','u','v','w','x','y','z')"
+
 var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec) (target string,
 	ignore bool, extraStmt *string, err error){
 	"types": func(text string, fname string, ctx *fieldExec) (string, bool, *string, error) {
@@ -49,6 +52,9 @@ var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec) (tar
 		}
 		if canUnSign[tp] {
 			ctx.canUnSign = true
+		}
+		if tp == "set" || tp == "enum" {
+			text = tp + enumVals
 		}
 		return text, false, nil, nil
 	},

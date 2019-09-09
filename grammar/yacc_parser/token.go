@@ -57,11 +57,20 @@ func (c *comment) ToString() string {
 	return c.val
 }
 
+type codeBlock struct {
+	val string
+}
+
+func (c *codeBlock) ToString() string {
+	return c.val
+}
+
 const (
 	inSingQuoteStr = iota + 1
 	inDoubleQuoteStr
 	inOneLineComment
 	inComment
+	inCodeBlock
 )
 
 func getByQuote(r rune) int {
@@ -89,6 +98,10 @@ func (q *quote) isInOneLineComment() bool {
 
 func (q *quote) isInSome() bool {
 	return q.c != 0
+}
+
+func (q *quote) isInCodeBlock() bool {
+	return q.c == inCodeBlock
 }
 
 func (q *quote) tryToggle(other int) bool {
@@ -145,6 +158,16 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 			q.tryToggle(inOneLineComment)
 		}
 
+		// handle code block
+		if r == '{' {
+			q.tryToggle(inCodeBlock)
+		}
+
+		// handle special rune
+		if isSpecialRune(r) {
+			return &terminal{string(r)}, nil
+		}
+
 		// Handle stringLiteral or identifier
 		var last rune
 		var stringBuf string
@@ -159,6 +182,15 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 				return nil, err
 			}
 
+			if q.isInCodeBlock(){
+				stringBuf += string(r)
+				if r == '}' {
+					q.tryToggle(inCodeBlock)
+					break
+				}
+				continue
+			}
+
 			// enter comment
 			if !q.isInComment() {
 				if last == '/' && r == '*' {
@@ -166,7 +198,7 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 				}
 			}
 
-			if (unicode.IsSpace(r) || isDelimiter(r)) && !q.isInSome() {
+			if (unicode.IsSpace(r) || isDelimiter(r) || isSpecialRune(r)) && !q.isInSome() {
 				if err := reader.UnreadRune(); err != nil {
 					panic(fmt.Sprintf("Unable to unread rune: %s.", string(r)))
 				}
@@ -198,9 +230,14 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 			}
 		}
 
+		// codeBlock
+		if strings.HasPrefix(stringBuf, "{") {
+			return &codeBlock{stringBuf[1: len(stringBuf) - 1]}, nil
+		}
+
 		// stringLiteral
 		if strings.HasPrefix(stringBuf, "'") || strings.HasPrefix(stringBuf, "\"") {
-			return &terminal{stringBuf[1 : len(stringBuf)-1]}, nil
+			return &terminal{stringBuf}, nil
 		}
 
 		// keyword
@@ -218,14 +255,25 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 	}
 }
 
+var specialRune = map[rune]bool{
+	',': true,
+	';': true,
+	'(': true,
+	')': true,
+}
+
+func isSpecialRune(r rune) bool {
+	_, ok := specialRune[r]
+	return ok
+}
+
 func isDelimiter(r rune) bool {
 	return r == '|' || r == ':'
 }
 
 func isNonTerminal(token string) bool {
 	for _, c := range token {
-		if unicode.IsUpper(c) ||
-			(!unicode.IsLetter(c) && c != '_') {
+		if !unicode.IsLower(c) && !unicode.IsDigit(c) && c != '_' {
 			return false
 		}
 	}
@@ -257,8 +305,8 @@ func IsKeyword(tkn Token) bool {
 	return ok
 }
 
-func isOperator(tkn Token) bool {
-	_, ok := tkn.(*operator)
+func IsCodeBlock(tkn Token) bool {
+	_, ok := tkn.(*codeBlock)
 	return ok
 }
 

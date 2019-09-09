@@ -1,6 +1,7 @@
 package gendata
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -8,7 +9,7 @@ import (
 func TestFields(t *testing.T) {
 	zzScript := `
 fields = {
-    types = {'bigint', 'float', 'double', 'varchar'},
+    types = {'bigint', 'float', 'double', 'enum'},
     sign = {'signed', 'unsigned'},
     keys = {'undef', 'key'}
 }
@@ -24,7 +25,7 @@ fields = {
 
 	assert.Equal(t, 21, len(stmts))
 
-/*	for _, stmt := range stmts {
+	for _, stmt := range stmts {
 		fmt.Println(stmt)
-	}*/
+	}
 }

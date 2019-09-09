@@ -20,8 +20,6 @@ type Production struct {
 	Alter []Seq
 }
 
-type stateType int
-
 const (
 	initState            = 0
 	delimFetchedState    = 1
@@ -76,12 +74,18 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 			}
 			state = delimFetchedState
 		case delimFetchedState:
-			if isOperator(tkn) {
+			if tkn.ToString() == "|" {
+				// multi delimiter will have empty alter
+				s.Items = append(s.Items, &terminal{""})
+				p.Alter = append(p.Alter, s)
+				s = Seq{}
+			} else if tkn.ToString() == ":" {
 				continue
+			} else {
+				state = termFetchedState
+				s.Items = append(s.Items, tkn)
 			}
-			state = termFetchedState
-			// Token of one branch
-			s.Items = append(s.Items, tkn)
+			// state after first term fetched
 		case termFetchedState:
 			switch v := tkn.(type) {
 			case *eof:
@@ -89,10 +93,18 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 				prods = append(prods, p)
 				state = endState
 			case *operator:
-				p.Alter = append(p.Alter, s)
-				s = Seq{}
-				state = termFetchedState
-			case *nonTerminal, *keyword, *terminal:
+				if v.ToString() == "|" {
+					p.Alter = append(p.Alter, s)
+					s = Seq{}
+				}
+				if v.ToString() == ":" {
+					p.Alter = append(p.Alter, Seq{[]Token{&terminal{""}}})
+					prods = append(prods, p)
+					p = Production{Head:s.Items[0]}
+					s = Seq{}
+				}
+				state = delimFetchedState
+			case *nonTerminal, *keyword, *terminal, *codeBlock:
 				// record last term
 				lastTerm = v
 				state = prepareNextProdState
@@ -122,7 +134,7 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 					p = Production{Head: lastTerm}
 				}
 				state = delimFetchedState
-			case *nonTerminal, *keyword, *terminal:
+			case *nonTerminal, *keyword, *terminal, *codeBlock:
 				// push last tern in Seq
 				s.Items = append(s.Items, lastTerm)
 				lastTerm = v

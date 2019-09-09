@@ -1,7 +1,6 @@
 package gendata
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -15,7 +14,7 @@ tables = {
 }
 
 fields = {
-    types = {'bigint', 'float', 'double', 'varchar(10)', 'decimal(10,4)'},
+    types = {'bigint', 'float', 'double', 'enum', 'decimal(10,4)'},
     sign = {'signed', 'unsigned'},
     keys = {'undef', 'key'}
 }
@@ -42,22 +41,23 @@ data = {
 		assert.Equal(t, config.Tables.numbers, len(ddls))
 		assert.Equal(t, 18, len(fieldExecs))
 
-		/*for _, sql := range ddls {
-		      fmt.Println(sql)
-	      }
+/*		for _, sql := range ddls {
+			fmt.Println(sql.ddl)
+		}
 
-	      for _, exec := range fieldExecs{
-		      fmt.Println(exec)
-	      }
-		*/
+		for _, exec := range fieldExecs {
+			fmt.Println(exec)
+		}*/
+
 	})
 
 	t.Run("gen sqls", func(t *testing.T) {
-		sqls, err := ByConfig(config)
+		sqls, _, err := ByConfig(config)
 		assert.Equal(t, nil, err)
-		for _, sql := range sqls {
+		assert.Equal(t, config.Tables.numbers * 2, len(sqls))
+/*		for _, sql := range sqls {
 			fmt.Println(sql)
-		}
+		}*/
 	})
 
 }

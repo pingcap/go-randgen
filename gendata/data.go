@@ -36,6 +36,7 @@ var summaryType = map[string]string{
 	"time":    temporalType,
 	"year":    temporalType,
 	"enum":    enumType,
+	"set":     enumType,
 }
 
 var defaultData = []*varWithDefault{
