@@ -193,6 +193,15 @@ create:
     (a int)
 ```
 
+生成结果：
+
+```sql
+CREATE TABLE table1 (a int);
+CREATE TABLE table2 (a int);
+CREATE TABLE table3 (a int);
+......
+```
+
 ## 与Mysql randgen不同的地方
 
  - 千万不要在规则尾部加分号, mysql randgen有这个习惯，但是go randgen不要这么做，我们不依赖这个分号
