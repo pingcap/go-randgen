@@ -221,8 +221,4 @@ CREATE TABLE table3 (a int);
  - 数据初始化时使用`insert`，而不是`insert ignore`，在给unsigned类型列
 生成数据时会自动适配非负数，尝试最多10次随机，直到发现负数，如果十次都是负数，则直接赋予1
  - zz文件中data的定义可以使用更加精确的数据类型，而不是只有mysql randgen中的四种
-
-
-## 未来开发计划
-
- - 根据varchar字段的长度自动生成在该长度以内的字符串，避免insert报错，彻底杜绝insert ignore的使用
+ - 不需要连接数据库，mysql randgen需要连接数据库缓存schema来生成sql，但是go randgen在生成ddl时会自动记录下生成的schema，因而不需要连接数据库
