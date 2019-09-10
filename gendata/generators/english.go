@@ -26,6 +26,6 @@ func newEnglish() *English {
 }
 
 func (e *English) Gen() string {
-	return e.dict[rand.Intn(len(e.dict))]
+	return `"` + e.dict[rand.Intn(len(e.dict))] + `"`
 }
 

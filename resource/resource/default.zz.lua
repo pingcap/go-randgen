@@ -8,7 +8,7 @@ tables = {
 
 fields = {
     types = {'bigint', 'float', 'double', 'decimal(40, 20)',
-        'char(20)', 'varchar(20)'},
+        'char(20)', 'varchar(20)', 'enum'},
     sign = {'signed', 'unsigned'}
 }
 

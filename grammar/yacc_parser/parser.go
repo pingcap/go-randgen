@@ -74,7 +74,14 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 			}
 			state = delimFetchedState
 		case delimFetchedState:
-			if tkn.ToString() == "|" {
+			if isEOF(tkn) {
+				s.Items = append(s.Items, &terminal{""})
+				p.Alter = append(p.Alter, s)
+				prods = append(prods, p)
+				state = endState
+				continue
+			}
+			if tkn.ToString() == "|" || isEOF(tkn) {
 				// multi delimiter will have empty alter
 				s.Items = append(s.Items, &terminal{""})
 				p.Alter = append(p.Alter, s)

@@ -1,6 +1,7 @@
 package gendata
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -52,9 +53,10 @@ data = {
 	})
 
 	t.Run("gen sqls", func(t *testing.T) {
-		sqls, _, err := ByConfig(config)
+		sqls, kf, err := ByConfig(config)
 		assert.Equal(t, nil, err)
 		assert.Equal(t, config.Tables.numbers * 2, len(sqls))
+		fmt.Println(kf["_digit"]())
 /*		for _, sql := range sqls {
 			fmt.Println(sql)
 		}*/

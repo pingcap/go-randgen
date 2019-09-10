@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-
 type ZzConfig struct {
 	Tables *Tables
 	Fields *Fields
@@ -33,7 +32,7 @@ func newZzConfig(l *lua.LState) (*ZzConfig, error) {
 		return nil, err
 	}
 
-	return &ZzConfig{Tables:tables, Fields:fields, Data:data}, nil
+	return &ZzConfig{Tables: tables, Fields: fields, Data: data}, nil
 }
 
 func (z *ZzConfig) genDdls() ([]*tableStmt, []*fieldExec, error) {
@@ -55,7 +54,7 @@ func (z *ZzConfig) genDdls() ([]*tableStmt, []*fieldExec, error) {
 }
 
 func ByZz(zz string) ([]string, Keyfun, error) {
-	l ,err := runLua(zz)
+	l, err := runLua(zz)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -65,10 +64,10 @@ func ByZz(zz string) ([]string, Keyfun, error) {
 		return nil, nil, err
 	}
 
-	return  ByConfig(config)
+	return ByConfig(config)
 }
 
-func ByConfig(config *ZzConfig) ([]string, Keyfun, error)  {
+func ByConfig(config *ZzConfig) ([]string, Keyfun, error) {
 	tableStmts, fieldExecs, err := config.genDdls()
 	if err != nil {
 		return nil, nil, err
@@ -102,12 +101,7 @@ func wrapInDml(pk string, data []string) string {
 	buf.WriteString("(" + pk)
 
 	for _, d := range data {
-		buf.WriteString(",")
-		if d == "null" {
-			buf.WriteString(d)
-		} else {
-			buf.WriteString("\"" + d + "\"")
-		}
+		buf.WriteString("," + d)
 	}
 
 	buf.WriteString(")")
@@ -120,15 +114,15 @@ const (
 	fChar
 )
 
-var fClass =  map[string] int{
-	"char": fChar,
-	"varchar": fChar,
-	"integer": fInt,
-	"int": fInt,
-	"smallint": fInt,
-	"tinyint": fInt,
+var fClass = map[string]int{
+	"char":      fChar,
+	"varchar":   fChar,
+	"integer":   fInt,
+	"int":       fInt,
+	"smallint":  fInt,
+	"tinyint":   fInt,
 	"mediumint": fInt,
-	"bigint": fInt,
+	"bigint":    fInt,
 }
 
 type Keyfun map[string]func() string
@@ -160,61 +154,20 @@ func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 		"_field_char": func() string {
 			return "`" + fieldsChar[rand.Intn(len(fieldsChar))].name + "`"
 		},
-		// port from generators
-		"_digit": func() string {
-			return generators.Get("digit").Gen()
-		},
-		"_letter": func() string {
-			return generators.Get("letter").Gen()
-		},
-		"_date": func() string {
-			return generators.Get("date").Gen()
-		},
-		"_year": func() string {
-			return generators.Get("year").Gen()
-		},
-		"_time": func() string {
-			return generators.Get("time").Gen()
-		},
-		"_datetime": func() string {
-			return generators.Get("datetime").Gen()
-		},
-		"_timestamp": func() string {
-			return generators.Get("timestamp").Gen()
-		},
-		"_english": func() string {
-			return `"` + generators.Get("english").Gen() + `"`
-		},
-		"_bool": func() string {
-			return generators.Get("bool").Gen()
-		},
-		"_boolean": func() string {
-			return generators.Get("boolean").Gen()
-		},
-		"_tinyint": func() string {
-			return generators.Get("tinyint").Gen()
-		},
-		"_smallint": func() string {
-			return generators.Get("smallint").Gen()
-		},
-		"_mediumint": func() string {
-			return generators.Get("mediumint").Gen()
-		},
-		"_int": func() string {
-			return generators.Get("int").Gen()
-		},
-		"_integer": func() string {
-			return generators.Get("integer").Gen()
-		},
-		"_decimal": func() string {
-			return generators.Get("decimal").Gen()
-		},
 	}
+
+	// port from generators
+	// digit -> _digit
+	generators.Traverse(func(name string, generator generators.Generator) {
+		m["_"+name] = func() string {
+			return generator.Gen()
+		}
+	})
 
 	return Keyfun(m)
 }
 
-func (k Keyfun) Gen(key string) (string, bool)  {
+func (k Keyfun) Gen(key string) (string, bool) {
 	if kf, ok := k[key]; ok {
 		return kf(), true
 	}

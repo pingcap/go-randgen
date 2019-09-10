@@ -17,10 +17,14 @@ func TestParse(t *testing.T) {
 
 		opt_end_of_input:
                 | {a = 1} empty {print(a+1)}
-                | END_OF_INPUT _table`))
+                | END_OF_INPUT _table
+
+        tail_empty:
+           |
+`))
 	productions, err := Parse(next)
 	assert.Equal(t, nil, err)
-	assert.Equal(t, 2, len(productions))
+	assert.Equal(t, 3, len(productions))
 
 	assertProduct(t, [][]string{
 		{"*yacc_parser.nonTerminal"},   // Head
@@ -36,6 +40,12 @@ func TestParse(t *testing.T) {
 		{"*yacc_parser.codeBlock", "*yacc_parser.nonTerminal", "*yacc_parser.codeBlock"},
 		{"*yacc_parser.terminal", "*yacc_parser.keyword"},
 	}, productions[1])
+
+	assertProduct(t, [][]string{
+		{"*yacc_parser.nonTerminal"},
+		{"*yacc_parser.terminal"},
+		{"*yacc_parser.terminal"},
+	}, productions[2])
 }
 
 func tokenType(tkn Token) string {
@@ -62,11 +72,10 @@ func TestPaserPrint(t *testing.T) {
 		|simple_statement_or_begin END_OF_INPUT  {a = "lala"; print(a)}
         |
 
-        haha: 
-           w12
-
 		opt_end_of_input: empty
-                | END_OF_INPUT _table`))
+                | END_OF_INPUT _table
+        
+        tail_empty:`))
 	productions, err := Parse(next)
 	assert.Equal(t, nil, err)
 
