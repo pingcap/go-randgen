@@ -28,14 +28,14 @@ const (
 	endState             = 4
 )
 
-func skipComment(nextToken func() (Token, error)) (t Token, err error)  {
+func skipCommentAndSemicolon(nextToken func() (Token, error)) (t Token, err error)  {
 	for {
 		t, err = nextToken()
 		if err != nil {
 			return nil, err
 		}
 
-		if !isComment(t) {
+		if !isComment(t) && t.ToString() != ";" {
 			return t, nil
 		}
 	}
@@ -49,7 +49,7 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 	var lastTerm Token
 
 	state := initState
-	t, err := skipComment(nextToken)
+	t, err := skipCommentAndSemicolon(nextToken)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 	// initState -> delimFetchedState -> termFetchedState ->...
 	//
 	for state != endState {
-		tkn, err = skipComment(nextToken)
+		tkn, err = skipCommentAndSemicolon(nextToken)
 		if err != nil {
 			return nil, err
 		}

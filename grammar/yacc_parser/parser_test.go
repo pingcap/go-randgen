@@ -13,6 +13,8 @@ func TestParse(t *testing.T) {
 		|simple_statement_or_begin END_OF_INPUT
         |
 
+        ;
+
 		opt_end_of_input:
                 | {a = 1} empty {print(a+1)}
                 | END_OF_INPUT _table`))

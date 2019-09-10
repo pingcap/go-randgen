@@ -216,9 +216,11 @@ CREATE TABLE table3 (a int);
 
 ## 与Mysql randgen不同的地方
 
- - 千万不要在规则尾部加分号, mysql randgen有这个习惯，但是go randgen不要这么做，我们不依赖这个分号
- 来判断不同的规则
+ - 不要在规则尾部加分号, mysql randgen有这个习惯，但是go randgen不需要这么做，我们不依赖这个分号
+ 来判断不同的规则。当然，你加了也没什么问题，为了兼容mysql randgen，
+ 作了额外的处理
  - 数据初始化时使用`insert`，而不是`insert ignore`，在给unsigned类型列
-生成数据时会自动适配非负数，尝试最多10次随机，直到发现负数，如果十次都是负数，则直接赋予1
+生成数据时会自动适配非负数，尝试最多10次随机，直到发现负数，如果十次都是负数，
+则直接赋予1
  - zz文件中data的定义可以使用更加精确的数据类型，而不是只有mysql randgen中的四种
  - 不需要连接数据库，mysql randgen需要连接数据库缓存schema来生成sql，但是go randgen在生成ddl时会自动记录下生成的schema，因而不需要连接数据库
