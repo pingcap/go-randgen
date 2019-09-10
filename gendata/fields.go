@@ -50,6 +50,7 @@ var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec) (tar
 		} else {
 			tp = text
 		}
+		tp = strings.ToLower(tp)
 		if canUnSign[tp] {
 			ctx.canUnSign = true
 		}
@@ -111,7 +112,7 @@ func (f *Fields) gen() ([]string, []*fieldExec, error) {
 		for i := range cur {
 			field := f.fields[i]
 			if field == "types" {
-				fExec.tp = cur[i]
+				fExec.tp = strings.ToLower(cur[i])
 			}
 			target, ignore, extraStmt, err := fieldFuncs[field](cur[i], fname, fExec)
 			if err != nil {
@@ -154,4 +155,12 @@ type fieldExec struct {
 	name      string
 	// tp writen by user zz file
 	tp string
+}
+
+func (f *fieldExec) dType() string {
+	index := strings.Index(f.tp, "(")
+	if index == -1 {
+		return f.tp
+	}
+	return f.tp[:index]
 }

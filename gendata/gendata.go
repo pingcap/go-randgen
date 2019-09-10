@@ -115,10 +115,38 @@ func wrapInDml(pk string, data []string) string {
 	return buf.String()
 }
 
+const (
+	fInt = iota
+	fChar
+)
+
+var fClass =  map[string] int{
+	"char": fChar,
+	"varchar": fChar,
+	"integer": fInt,
+	"int": fInt,
+	"smallint": fInt,
+	"tinyint": fInt,
+	"mediumint": fInt,
+	"bigint": fInt,
+}
 
 type Keyfun map[string]func() string
 
 func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
+	fieldsInt := make([]*fieldExec, 0)
+	fieldsChar := make([]*fieldExec, 0)
+	for _, fieldExec := range fields {
+		if class, ok := fClass[fieldExec.dType()]; ok {
+			switch class {
+			case fInt:
+				fieldsInt = append(fieldsInt, fieldExec)
+			case fChar:
+				fieldsChar = append(fieldsChar, fieldExec)
+			}
+		}
+	}
+
 	m := map[string]func() string{
 		"_table": func() string {
 			return tables[rand.Intn(len(tables))].name
@@ -126,12 +154,13 @@ func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 		"_field": func() string {
 			return "`" + fields[rand.Intn(len(fields))].name + "`"
 		},
-		"_int": func() string {
-			return generators.Get("int").Gen()
+		"_field_int": func() string {
+			return "`" + fieldsInt[rand.Intn(len(fieldsInt))].name + "`"
 		},
-		"_tinyint": func() string {
-			return generators.Get("tinyint").Gen()
+		"_field_char": func() string {
+			return "`" + fieldsChar[rand.Intn(len(fieldsChar))].name + "`"
 		},
+		// port from generators
 		"_digit": func() string {
 			return generators.Get("digit").Gen()
 		},
@@ -154,7 +183,31 @@ func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 			return generators.Get("timestamp").Gen()
 		},
 		"_english": func() string {
-			return generators.Get("english").Gen()
+			return `"` + generators.Get("english").Gen() + `"`
+		},
+		"_bool": func() string {
+			return generators.Get("bool").Gen()
+		},
+		"_boolean": func() string {
+			return generators.Get("boolean").Gen()
+		},
+		"_tinyint": func() string {
+			return generators.Get("tinyint").Gen()
+		},
+		"_smallint": func() string {
+			return generators.Get("smallint").Gen()
+		},
+		"_mediumint": func() string {
+			return generators.Get("mediumint").Gen()
+		},
+		"_int": func() string {
+			return generators.Get("int").Gen()
+		},
+		"_integer": func() string {
+			return generators.Get("integer").Gen()
+		},
+		"_decimal": func() string {
+			return generators.Get("decimal").Gen()
 		},
 	}
 

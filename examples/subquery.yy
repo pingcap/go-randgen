@@ -6,5 +6,5 @@ query:
 select:
     SELECT * FROM
     (select)
-    WHERE _field > 10
-    | SELECT * FROM _table WHERE _field > 'a'
+    WHERE _field_int > 10
+    | SELECT * FROM _table WHERE _field_char = _english

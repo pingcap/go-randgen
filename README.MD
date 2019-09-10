@@ -111,11 +111,11 @@ data = {
         '12.991', '1.009', '-9.183',
         'decimal',
     },
-    int = {100, 10, 3},
+    bigint = {100, 10, 3},
 }
 ```
 
-上面这个配置，在遇到int类型的字段时，每次生成数据会从100, 10, 3中随机选择一个，而
+上面这个配置，在遇到bigint类型的字段时，每次生成数据会从100, 10, 3中随机选择一个，而
 不会理会更粗犷的numbers的配置。
 
 其中'null', 'tinyint', 'smallint', 'decimal'都是go randgen自带的数据生成规则。
@@ -133,13 +133,25 @@ go randgen中支持的所有数据生成规则见[链接](gendata/generators/reg
 
 #### 关键字
 
+获取表名和字段名的接口:
+
  - `_table`: 从生成的表中随机选择一张
  - `_field`: 从生成的字段中随机选择一个
+ - `_field_int`: 从整型字段中随机选择一个
+ - `_field_char`: 从char和varchar类型字段中随机选择一个
+ 
+随机生成数据的一些糖:
+
  - `_digit`: 随机生成一个0-9的数字
  - `_letter`: 随机生成一个'a'到'z'之间的字母
  - `_english`: 随机生成一个英文单词
  - `_int`: 随机生成一个整型
- 
+ - `_date`: 生成`yyyy-MM-dd`格式的随机日期
+ - `_year`: 随机生成一个年份
+ - `_time`: 随机生成一个`hh:mm:ss`的随机时间
+ - `_datetime`: 随机生成一个`yyyy-MM-dd hh:mm:ss`的随机时间
+
+
 没有写全，代码位于[链接](/gendata/gendata.go)的底部，可以自行查看，日后有空再补全
 
 #### 嵌入lua代码
@@ -147,9 +159,9 @@ go randgen中支持的所有数据生成规则见[链接](gendata/generators/reg
 可以在大括号（"{}"）的包围中写lua代码，调用print可以想要的内容拼接到sql中
 
 ```
-query:
+query:{a = 1}
     CREATE TABLE 
-    {a = 1;print(string.format("t%d", a))} (a INT)
+    {print(string.format("t%d", a))} (a INT)
 ```
 
 以上代码始终生成sql为`CREATE TABLE t1 (a INT)`
@@ -164,9 +176,9 @@ query:
 
 select:
     SELECT * FROM
-    (select)   # 递归自己
-    WHERE _field > 10
-    | SELECT * FROM _table WHERE _field > 'a'
+    (select)
+    WHERE _field_int > 10
+    | SELECT * FROM _table WHERE _field_char = _english
 ```
 
  - 可能为空的规则
