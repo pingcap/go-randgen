@@ -1,7 +1,11 @@
 /* test create unique table */
 
+{
+i = 1
+}
+
 query:
-    {if(i==nil) then i = 1 end} create
+    create
 
 create:
     CREATE TABLE

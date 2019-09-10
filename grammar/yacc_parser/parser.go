@@ -41,7 +41,25 @@ func skipCommentAndSemicolon(nextToken func() (Token, error)) (t Token, err erro
 	}
 }
 
-func Parse(nextToken func() (Token, error)) ([]Production, error) {
+func collectHeadCodeBlocks(nextToken func() (Token, error)) (t Token, cbs []*CodeBlock, err error)  {
+	cbs = make([]*CodeBlock, 0)
+	for {
+		t, err = skipCommentAndSemicolon(nextToken)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if cb, ok := t.(*CodeBlock); ok {
+			cbs = append(cbs, cb)
+		} else {
+			break
+		}
+	}
+
+	return t, cbs, nil
+}
+
+func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) {
 	var tkn Token
 	var prods []Production
 	var p Production
@@ -49,12 +67,12 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 	var lastTerm Token
 
 	state := initState
-	t, err := skipCommentAndSemicolon(nextToken)
+	t, codeblocks, err := collectHeadCodeBlocks(nextToken)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if !IsTknNonTerminal(t) {
-		return nil, fmt.Errorf("%s is not nonterminal", t.ToString())
+		return nil, nil, fmt.Errorf("%s is not nonterminal", t.ToString())
 	}
 
 	p.Head = t
@@ -65,12 +83,12 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 	for state != endState {
 		tkn, err = skipCommentAndSemicolon(nextToken)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		switch state {
 		case initState:
 			if tkn.ToString() != ":" {
-				return nil, errors.New("expect ':'")
+				return nil, nil, errors.New("expect ':'")
 			}
 			state = delimFetchedState
 		case delimFetchedState:
@@ -111,7 +129,7 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 					s = Seq{}
 				}
 				state = delimFetchedState
-			case *nonTerminal, *keyword, *terminal, *codeBlock:
+			case *nonTerminal, *keyword, *terminal, *CodeBlock:
 				// record last term
 				lastTerm = v
 				state = prepareNextProdState
@@ -135,18 +153,18 @@ func Parse(nextToken func() (Token, error)) ([]Production, error) {
 					s = Seq{}
 					prods = append(prods, p)
 					if !IsTknNonTerminal(lastTerm) {
-						return nil, fmt.Errorf("%s is not nonterminal \n %s",
+						return nil, nil, fmt.Errorf("%s is not nonterminal \n %s",
 							lastTerm.ToString(), debug.Stack())
 					}
 					p = Production{Head: lastTerm}
 				}
 				state = delimFetchedState
-			case *nonTerminal, *keyword, *terminal, *codeBlock:
+			case *nonTerminal, *keyword, *terminal, *CodeBlock:
 				// push last tern in Seq
 				s.Items = append(s.Items, lastTerm)
 				lastTerm = v
 			}
 		}
 	}
-	return prods, nil
+	return codeblocks, prods, nil
 }

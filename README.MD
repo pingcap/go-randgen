@@ -166,6 +166,35 @@ query:{a = 1}
 
 以上代码始终生成sql为`CREATE TABLE t1 (a INT)`
 
+正常的代码块会在每次分支被运行到的时候执行一遍。
+
+go randgen支持在文件的头部插入一个代码块，这个代码块在整个
+sql执行的过程中只会执行一次，称为"头部代码块"，主要用于变量或者函数的申明：
+
+```
+
+# 头部代码块对后面sql生成需要的一些变量或函数的进行申明
+{
+i = 1
+a = 100
+function add(num1, num2)
+    return num1 + num2    
+end
+}
+
+query:
+   select
+
+select:
+   SELECT * FROM _table WHERE where_clause
+   
+where_clause:
+   _field_int > {print(i)}
+   | _field_char > {print(a)}
+   | _field_int + _field_int > {print(add(i, a))}
+   
+```
+
 #### 常用模式
 
  - 递归地嵌套子查询
@@ -192,11 +221,15 @@ order:
 #....省略其他规则
 ```
 
- - 测试create语句时创建名字不冲突的表（插入lua脚本）
+ - 测试create语句时创建名字不冲突的表（插入lua脚本,利用头部代码块）
 
 ```
+# 申明i为1
+{
+i = 1
+}
+
 query: 
-    {if(i==nil) then i = 1 end}  # 如果变量还未定义,申明i为1
     create
     
 create:

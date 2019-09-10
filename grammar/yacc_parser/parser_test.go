@@ -22,7 +22,7 @@ func TestParse(t *testing.T) {
         tail_empty:
            |
 `))
-	productions, err := Parse(next)
+	_, productions, err := Parse(next)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 3, len(productions))
 
@@ -37,7 +37,7 @@ func TestParse(t *testing.T) {
 	assertProduct(t, [][]string{
 		{"*yacc_parser.nonTerminal"},
 		{"*yacc_parser.terminal"},
-		{"*yacc_parser.codeBlock", "*yacc_parser.nonTerminal", "*yacc_parser.codeBlock"},
+		{"*yacc_parser.CodeBlock", "*yacc_parser.nonTerminal", "*yacc_parser.CodeBlock"},
 		{"*yacc_parser.terminal", "*yacc_parser.keyword"},
 	}, productions[1])
 
@@ -76,7 +76,7 @@ func TestPaserPrint(t *testing.T) {
                 | END_OF_INPUT _table
         
         tail_empty:`))
-	productions, err := Parse(next)
+	_, productions, err := Parse(next)
 	assert.Equal(t, nil, err)
 
 	for _, p := range productions {

@@ -245,9 +245,16 @@ func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 // GenerateSQLSequentially returns a `SQLSequentialIterator` which can generate sql case by case randomly
 // productions is a `Production` array created by `yacc_parser.Parse`
 // productionName assigns a production name as the root node.
-func GenerateSQLRandomly(productions []yacc_parser.Production, keyFunc gendata.Keyfun, productionName string) (SQLIterator, error) {
+func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock, productions []yacc_parser.Production, keyFunc gendata.Keyfun, productionName string) (SQLIterator, error) {
 	pMap := initProductionMap(productions)
 	l := lua.NewState()
+	// run head code blocks
+	for _, codeblock := range headCodeBlocks {
+		if err := l.DoString(codeblock.ToString()); err != nil {
+			return nil, err
+		}
+	}
+
 	pBuf := &bytes.Buffer{}
 	// cover the origin lua print function
 	l.SetGlobal("print", l.NewFunction(getLuaPrintFun(pBuf)))

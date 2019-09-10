@@ -57,11 +57,11 @@ func (c *comment) ToString() string {
 	return c.val
 }
 
-type codeBlock struct {
+type CodeBlock struct {
 	val string
 }
 
-func (c *codeBlock) ToString() string {
+func (c *CodeBlock) ToString() string {
 	return c.val
 }
 
@@ -230,9 +230,9 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 			}
 		}
 
-		// codeBlock
+		// CodeBlock
 		if strings.HasPrefix(stringBuf, "{") {
-			return &codeBlock{stringBuf[1: len(stringBuf) - 1]}, nil
+			return &CodeBlock{stringBuf[1: len(stringBuf) - 1]}, nil
 		}
 
 		// stringLiteral
@@ -306,7 +306,7 @@ func IsKeyword(tkn Token) bool {
 }
 
 func IsCodeBlock(tkn Token) bool {
-	_, ok := tkn.(*codeBlock)
+	_, ok := tkn.(*CodeBlock)
 	return ok
 }
 

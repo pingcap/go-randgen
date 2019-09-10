@@ -12,12 +12,12 @@ const maxRetry = 10
 
 func ByYy(yy string, num int, root string, keyFunc gendata.Keyfun) ([]string, error) {
 	reader := bytes.NewBufferString(yy)
-	productions, err := yacc_parser.Parse(yacc_parser.Tokenize(reader))
+	codeblocks, productions, err := yacc_parser.Parse(yacc_parser.Tokenize(reader))
 	if err != nil {
 		return nil, err
 	}
 
-	sqlIter, err := sql_generator.GenerateSQLRandomly(productions, keyFunc, root)
+	sqlIter, err := sql_generator.GenerateSQLRandomly(codeblocks, productions, keyFunc, root)
 	if err != nil {
 		return nil, err
 	}
