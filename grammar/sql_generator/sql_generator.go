@@ -156,7 +156,6 @@ func (pn *productionNode) pruneTerminator() {
 
 // SQLIterator is a iterator interface of sql generator
 type SQLIterator interface {
-
 	// HasNext returns whether the iterator exists next sql case
 	HasNext() bool
 
@@ -213,10 +212,10 @@ func initProductionMap(productions []yacc_parser.Production) map[string]yacc_par
 // SQLRandomlyIterator is a iterator of sql generator
 type SQLRandomlyIterator struct {
 	productionName string
-	productionMap map[string]yacc_parser.Production
-	keyFunc gendata.Keyfun
-	luaVM *lua.LState
-	printBuf *bytes.Buffer
+	productionMap  map[string]yacc_parser.Production
+	keyFunc        gendata.Keyfun
+	luaVM          *lua.LState
+	printBuf       *bytes.Buffer
 }
 
 // HasNext returns whether the iterator exists next sql case
@@ -228,7 +227,7 @@ func (i *SQLRandomlyIterator) HasNext() bool {
 // it will panic when the iterator doesn't exist next sql case
 func (i *SQLRandomlyIterator) Next() (string, error) {
 	stringBuffer := bytes.NewBuffer([]byte{})
-	err := i.generateSQLRandomly(i.productionName,nil, stringBuffer)
+	err := i.generateSQLRandomly(i.productionName, nil, stringBuffer, false)
 	if err != nil {
 		return "", err
 	}
@@ -261,15 +260,15 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock, productions []
 
 	return &SQLRandomlyIterator{
 		productionName: productionName,
-		productionMap:pMap,
-		keyFunc:keyFunc,
-		luaVM:l,
-		printBuf:pBuf,
+		productionMap:  pMap,
+		keyFunc:        keyFunc,
+		luaVM:          l,
+		printBuf:       pBuf,
 	}, nil
 }
 
 func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
-	parents []string, writer io.StringWriter) error {
+	parents []string, writer io.StringWriter, parentPreSpace bool) (err error) {
 	// get root production
 	production, exist := i.productionMap[productionName]
 	if !exist {
@@ -288,24 +287,35 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 	// random an alter
 	selectIndex := rand.Intn(len(production.Alter))
 	seqs := production.Alter[selectIndex]
-	for _, item := range seqs.Items {
+	for index, item := range seqs.Items {
 		if yacc_parser.IsTerminal(item) || yacc_parser.NonTerminalNotInMap(i.productionMap, item) {
 			// terminal
-			_, err := writer.WriteString(item.ToString() + " ")
-			if err != nil {
-				return errors.New("fail to write `io.StringWriter`")
+			if err = handlePreSpace(index, parentPreSpace, item, writer); err != nil {
+				return err
+			}
+
+			if _, err := writer.WriteString(item.ToString()); err != nil {
+				return err
 			}
 		} else if yacc_parser.IsKeyword(item) {
+			if err = handlePreSpace(index, parentPreSpace, item, writer); err != nil {
+				return err
+			}
+
 			// key word parse
 			if res, ok := i.keyFunc.Gen(item.ToString()); ok {
-				_, err := writer.WriteString(res + " ")
+				_, err := writer.WriteString(res)
 				if err != nil {
 					return errors.New("fail to write `io.StringWriter`")
 				}
 			} else {
 				return fmt.Errorf("'%s' key word not support", item.ToString())
 			}
-		} else if yacc_parser.IsCodeBlock(item){
+		} else if yacc_parser.IsCodeBlock(item) {
+			if err = handlePreSpace(index, parentPreSpace, item, writer); err != nil {
+				return err
+			}
+
 			// lua code block
 			if err := i.luaVM.DoString(item.ToString()); err != nil {
 				log.Printf("lua code `%s`, run fail\n %v\n",
@@ -313,12 +323,17 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 				return err
 			}
 			if i.printBuf.Len() > 0 {
-				writer.WriteString(i.printBuf.String() + " ")
+				writer.WriteString(i.printBuf.String())
 				i.printBuf.Reset()
 			}
 		} else {
 			// nonTerminal recursive
-			err := i.generateSQLRandomly(item.ToString(), parents, writer)
+			if index == 0 {
+				err = i.generateSQLRandomly(item.ToString(), parents, writer, parentPreSpace)
+			} else {
+				err = i.generateSQLRandomly(item.ToString(), parents, writer, item.HasPreSpace())
+			}
+
 			if err != nil {
 				return err
 			}
@@ -328,4 +343,29 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 	return nil
 }
 
+func handlePreSpace(index int, parentSpace bool, tkn yacc_parser.Token, writer io.StringWriter) error {
+	if index == 0 {
+		if parentSpace {
+			if err := writePreSpace(tkn, writer); err != nil {
+				return errors.New("fail to write `io.StringWriter`")
+			}
+		}
+		return nil
+	}
 
+	if tkn.HasPreSpace() {
+		if err := writePreSpace(tkn, writer); err != nil {
+			return errors.New("fail to write `io.StringWriter`")
+		}
+	}
+
+	return nil
+}
+
+func writePreSpace(tkn yacc_parser.Token, writer io.StringWriter) error {
+	if _, err := writer.WriteString(" "); err != nil {
+		return err
+	}
+
+	return nil
+}

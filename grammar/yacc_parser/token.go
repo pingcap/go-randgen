@@ -9,8 +9,18 @@ import (
 
 type Token interface {
 	ToString() string
+	HasPreSpace() bool
 }
+
+type commonAttr struct {
+	hasPreSpace bool
+}
+
 type eof struct{}
+
+func (*eof) HasPreSpace() bool {
+	return false
+}
 
 func (*eof) ToString() string {
 	return "EOF"
@@ -21,12 +31,21 @@ type operator struct {
 	val string
 }
 
+func (op *operator) HasPreSpace() bool {
+	return false
+}
+
 func (op *operator) ToString() string {
 	return op.val
 }
 
 type keyword struct {
+	commonAttr
 	val string
+}
+
+func (kw *keyword) HasPreSpace() bool {
+	return kw.commonAttr.hasPreSpace
 }
 
 func (kw *keyword) ToString() string {
@@ -34,7 +53,12 @@ func (kw *keyword) ToString() string {
 }
 
 type nonTerminal struct {
+	commonAttr
 	val string
+}
+
+func (nt *nonTerminal) HasPreSpace() bool {
+	return nt.commonAttr.hasPreSpace
 }
 
 func (nt *nonTerminal) ToString() string {
@@ -42,7 +66,12 @@ func (nt *nonTerminal) ToString() string {
 }
 
 type terminal struct {
+	commonAttr
 	val string
+}
+
+func (t *terminal) HasPreSpace() bool {
+	return t.commonAttr.hasPreSpace
 }
 
 func (t *terminal) ToString() string {
@@ -53,12 +82,21 @@ type comment struct {
 	val string
 }
 
+func (c *comment) HasPreSpace() bool {
+	return false
+}
+
 func (c *comment) ToString() string {
 	return c.val
 }
 
 type CodeBlock struct {
+	commonAttr
 	val string
+}
+
+func (c *CodeBlock) HasPreSpace() bool {
+	return c.commonAttr.hasPreSpace
 }
 
 func (c *CodeBlock) ToString() string {
@@ -115,15 +153,17 @@ func (q *quote) tryToggle(other int) bool {
 	return false
 }
 
-func skipSpace(reader io.RuneScanner) (r rune, err error) {
+func skipSpace(reader io.RuneScanner) (hasSpace bool, r rune, err error) {
 	for {
 		r, _, err = reader.ReadRune()
 		if err != nil {
-			return 0, err
+			return false, 0, err
 		}
 
 		if !unicode.IsSpace(r) {
-			return r, nil
+			return hasSpace, r, nil
+		} else {
+			hasSpace = true
 		}
 	}
 }
@@ -136,12 +176,14 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 		var r rune
 		var err error
 		// Skip spaces.
-		r, err = skipSpace(reader)
+		hasSpace, r, err := skipSpace(reader)
 		if err == io.EOF {
 			return &eof{}, nil
 		} else if err != nil {
 			return nil, err
 		}
+
+		common := commonAttr{hasPreSpace:hasSpace}
 
 		// Handle delimiter.
 		if r == ':' || r == '|' {
@@ -165,7 +207,7 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 
 		// handle special rune
 		if isSpecialRune(r) {
-			return &terminal{string(r)}, nil
+			return &terminal{common,string(r)}, nil
 		}
 
 		// Handle stringLiteral or identifier
@@ -232,26 +274,26 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 
 		// CodeBlock
 		if strings.HasPrefix(stringBuf, "{") {
-			return &CodeBlock{stringBuf[1: len(stringBuf) - 1]}, nil
+			return &CodeBlock{common, stringBuf[1: len(stringBuf) - 1]}, nil
 		}
 
 		// stringLiteral
 		if strings.HasPrefix(stringBuf, "'") || strings.HasPrefix(stringBuf, "\"") {
-			return &terminal{stringBuf}, nil
+			return &terminal{common, stringBuf}, nil
 		}
 
 		// keyword
 		if strings.HasPrefix(stringBuf, "_") {
-			return &keyword{stringBuf}, nil
+			return &keyword{common, stringBuf}, nil
 		}
 
 		// nonTerminal
 		if isNonTerminal(stringBuf) {
-			return &nonTerminal{stringBuf}, nil
+			return &nonTerminal{common, stringBuf}, nil
 		}
 
 		// terminal
-		return &terminal{stringBuf}, nil
+		return &terminal{common, stringBuf}, nil
 	}
 }
 

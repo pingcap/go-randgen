@@ -10,4 +10,7 @@ bin:
 test:
 	go test ./...
 
-.PHONY: all resource bin test
+debug:
+	go build -o go-randgen-debug -gcflags "-N -l" cmd/randgen/*.go
+
+.PHONY: all resource bin test debug

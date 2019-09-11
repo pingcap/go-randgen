@@ -93,7 +93,7 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 			state = delimFetchedState
 		case delimFetchedState:
 			if isEOF(tkn) {
-				s.Items = append(s.Items, &terminal{""})
+				s.Items = append(s.Items, &terminal{val:""})
 				p.Alter = append(p.Alter, s)
 				prods = append(prods, p)
 				state = endState
@@ -101,7 +101,7 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 			}
 			if tkn.ToString() == "|" || isEOF(tkn) {
 				// multi delimiter will have empty alter
-				s.Items = append(s.Items, &terminal{""})
+				s.Items = append(s.Items, &terminal{val:""})
 				p.Alter = append(p.Alter, s)
 				s = Seq{}
 			} else if tkn.ToString() == ":" {
@@ -123,7 +123,7 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 					s = Seq{}
 				}
 				if v.ToString() == ":" {
-					p.Alter = append(p.Alter, Seq{[]Token{&terminal{""}}})
+					p.Alter = append(p.Alter, Seq{[]Token{&terminal{val:""}}})
 					prods = append(prods, p)
 					p = Production{Head:s.Items[0]}
 					s = Seq{}

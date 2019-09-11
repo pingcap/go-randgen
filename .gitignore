@@ -8,5 +8,6 @@
 *.out
 *.sql
 go-randgen
+go-randgen-debug
 out
 gen

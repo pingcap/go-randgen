@@ -1,17 +1,21 @@
 /* interval expr test */
 
 query:
-    SELECT function_call
-    | SELECT _datetime interval_expr
+    SELECT date_val AS dtest
 
-function_call:
-    add_sub(_datetime, inter)
+date_val:
+    date_function_call
+    | date_val  interval_expr
+    | _datetime
+
+date_function_call:
+    add_sub(date_val, inter)
 
 inter:
     INTERVAL flag expr_unit
 
 add_sub:
-    DATA_ADD | DATA_SUB
+    DATE_ADD | DATE_SUB
 
 expr_unit:
     _tinyint_unsigned unit
