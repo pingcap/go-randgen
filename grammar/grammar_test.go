@@ -44,6 +44,16 @@ select:
     WINDOW w AS (ORDER BY fieldA);
 `
 
+const luaYy = `
+{
+f={a=1, b=3}
+arr={0,2,3,4}
+}
+
+query:
+  {print(arr[f.a])} | {print(arr[f.b])}
+`
+
 func TestByYyWithoutKeyword(t *testing.T) {
 	t.SkipNow()
 	num := 10
@@ -67,6 +77,16 @@ func TestByYy(t *testing.T) {
 			return "ffff"
 		},
 	})
+	assert.Equal(t, nil, err)
+
+	for _, sql := range sqls {
+		fmt.Println(sql)
+	}
+}
+
+func TestLuaYy(t *testing.T) {
+	t.SkipNow()
+	sqls, err := ByYy(luaYy, 10, "query", nil)
 	assert.Equal(t, nil, err)
 
 	for _, sql := range sqls {

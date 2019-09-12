@@ -108,7 +108,6 @@ const (
 	inDoubleQuoteStr
 	inOneLineComment
 	inComment
-	inCodeBlock
 )
 
 func getByQuote(r rune) int {
@@ -136,10 +135,6 @@ func (q *quote) isInOneLineComment() bool {
 
 func (q *quote) isInSome() bool {
 	return q.c != 0
-}
-
-func (q *quote) isInCodeBlock() bool {
-	return q.c == inCodeBlock
 }
 
 func (q *quote) tryToggle(other int) bool {
@@ -172,6 +167,7 @@ func skipSpace(reader io.RuneScanner) (hasSpace bool, r rune, err error) {
 // simple lexer not look back, have some problem when quote not pair
 func Tokenize(reader io.RuneScanner) func() (Token, error) {
 	q := quote{0}
+	pStack := &stack{}
 	return func() (Token, error) {
 		var r rune
 		var err error
@@ -202,7 +198,7 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 
 		// handle code block
 		if r == '{' {
-			q.tryToggle(inCodeBlock)
+			pStack.push(r)
 		}
 
 		// handle special rune
@@ -224,11 +220,16 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 				return nil, err
 			}
 
-			if q.isInCodeBlock(){
+			// in code block
+			if !pStack.empty() {
 				stringBuf += string(r)
-				if r == '}' {
-					q.tryToggle(inCodeBlock)
-					break
+				if r == '{' {
+					pStack.push(r)
+				} else if r == '}' {
+					pStack.pop()
+					if pStack.empty() {
+						break
+					}
 				}
 				continue
 			}

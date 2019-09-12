@@ -71,6 +71,19 @@ t3: 'f'
 				`:`, `'d'`, `|`, `t3`, `'e'`, `t3`, `:`, `'f'`,
 				`|`, `'g'`, `'h'`, `|`, `'i'`},
 		},
+		{
+			`
+{i=1
+f1={a = 1, b = 2}
+f2={a = 2, b = 3}
+arr={4, 6, 'undef'}
+}
+
+t1: c | o | p
+`,
+			[]string{"i=1\nf1={a = 1, b = 2}\nf2={a = 2, b = 3}\narr={4, 6, 'undef'}\n",
+				"t1", ":", "c", "|", "o", "|", "p"},
+		},
 	}
 
 	for _, originAndExpec := range originAndExpecs {

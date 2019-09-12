@@ -16,7 +16,7 @@ func TestParse(t *testing.T) {
         ;
 
 		opt_end_of_input:
-                | {a = 1} empty {print(a+1)}
+                | {a = 1} empty {print(a+1);arr={1,2,3,4}}
                 | END_OF_INPUT _table
 
         tail_empty:
@@ -67,10 +67,10 @@ func assertProduct(t *testing.T, expect [][]string, real Production) {
 }
 
 func TestPaserPrint(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	next := Tokenize(bytes.NewBufferString(`sql_statement: EMPTY ';'
 		|simple_statement_or_begin END_OF_INPUT  {a = "lala"; print(a)}
-        |
+        |  {f = {1,2,3,4}; m=10}
 
 		opt_end_of_input: empty
                 | END_OF_INPUT _table
