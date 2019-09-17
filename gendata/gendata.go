@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/yuin/gopher-lua"
-	"go-randgen/gendata/generators"
+	"github.com/dqyuan/go-randgen/gendata/generators"
 	"math/rand"
 	"strconv"
 	"strings"
