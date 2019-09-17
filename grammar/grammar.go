@@ -2,9 +2,9 @@ package grammar
 
 import (
 	"fmt"
-	"github.com/dqyuan/go-randgen/gendata"
-	"github.com/dqyuan/go-randgen/grammar/sql_generator"
-	"github.com/dqyuan/go-randgen/grammar/yacc_parser"
+	"github.com/dqinyuan/go-randgen/gendata"
+	"github.com/dqinyuan/go-randgen/grammar/sql_generator"
+	"github.com/dqinyuan/go-randgen/grammar/yacc_parser"
 	"log"
 )
 

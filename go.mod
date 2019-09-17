@@ -1,4 +1,4 @@
-module github.com/dqyuan/go-randgen
+module github.com/dqinyuan/go-randgen
 
 go 1.12
 

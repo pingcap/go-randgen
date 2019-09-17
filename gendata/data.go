@@ -2,7 +2,7 @@ package gendata
 
 import (
 	"github.com/yuin/gopher-lua"
-	"github.com/dqyuan/go-randgen/gendata/generators"
+	"github.com/dqinyuan/go-randgen/gendata/generators"
 	"log"
 	"math/rand"
 	"runtime/debug"
