@@ -2,7 +2,20 @@
 
 go版本的mysql randgen
 
-## 如何编译
+## 直接安装
+
+```
+go get -u  github.com/dqinyuan/go-randgen/cmd/randgen
+```
+
+尝试一下：
+
+```
+randgen -h
+```
+
+
+## 编译安装
 
  - 安装go-bindata命令行工具
 
