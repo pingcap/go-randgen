@@ -1,16 +1,15 @@
 package yacc_parser
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestParse(t *testing.T) {
-	next := Tokenize(bytes.NewBufferString(`sql_statement: simple_statement_or_begin EMPTY ';' 
+	next := Tokenize(&RuneSeq{Runes:[]rune(`sql_statement: simple_statement_or_begin EMPTY ';' 
           opt_end_of_input
-		|simple_statement_or_begin END_OF_INPUT
+		|simple_statement_or_begin END_OF_INPUT;
         |
 
         ;
@@ -20,8 +19,9 @@ func TestParse(t *testing.T) {
                 | END_OF_INPUT _table
 
         tail_empty:
+           SELECT @A := 1
            |
-`))
+`)})
 	_, productions, err := Parse(next)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 3, len(productions))
@@ -30,8 +30,8 @@ func TestParse(t *testing.T) {
 		{"*yacc_parser.nonTerminal"},   // Head
 		{"*yacc_parser.nonTerminal", "*yacc_parser.terminal",
 			"*yacc_parser.terminal", "*yacc_parser.nonTerminal"},   //Seq 0
-		{"*yacc_parser.nonTerminal", "*yacc_parser.terminal", },   //Seq1
-		{"*yacc_parser.terminal"},                                 // Seq2
+		{"*yacc_parser.nonTerminal", "*yacc_parser.terminal", "*yacc_parser.terminal"},   //Seq1
+		{"*yacc_parser.terminal"},                 // Seq2
 	}, productions[0])
 
 	assertProduct(t, [][]string{
@@ -43,7 +43,8 @@ func TestParse(t *testing.T) {
 
 	assertProduct(t, [][]string{
 		{"*yacc_parser.nonTerminal"},
-		{"*yacc_parser.terminal"},
+		{"*yacc_parser.terminal", "*yacc_parser.terminal",
+			"*yacc_parser.terminal", "*yacc_parser.terminal"},
 		{"*yacc_parser.terminal"},
 	}, productions[2])
 }
@@ -68,14 +69,21 @@ func assertProduct(t *testing.T, expect [][]string, real Production) {
 
 func TestPaserPrint(t *testing.T) {
 	//t.SkipNow()
-	next := Tokenize(bytes.NewBufferString(`sql_statement: EMPTY ';'
-		|simple_statement_or_begin END_OF_INPUT  {a = "lala"; print(a)}
-        |  {f = {1,2,3,4}; m=10}
+	next := Tokenize(&RuneSeq{Runes:[]rune(`sql_statement: simple_statement_or_begin EMPTY ';' 
+          opt_end_of_input
+		|simple_statement_or_begin END_OF_INPUT;
+        |
 
-		opt_end_of_input: empty
+        ;
+
+		opt_end_of_input:
+                | {a = 1} empty {print(a+1);arr={1,2,3,4}}
                 | END_OF_INPUT _table
-        
-        tail_empty:`))
+
+        tail_empty:
+           SELECT @A := 1
+           |
+`)})
 	_, productions, err := Parse(next)
 	assert.Equal(t, nil, err)
 

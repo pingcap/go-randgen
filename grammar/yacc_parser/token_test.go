@@ -1,7 +1,6 @@
 package yacc_parser
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	_ "net/http/pprof"
@@ -56,6 +55,10 @@ a muti line comment
 				"haha", "a = 2 * a; print(a)", "nana"},
 		},
 		{
+			`query: select @A := 'sdwe'`,
+			[]string{"query", ":", "select", "@A", ":=", "'sdwe'"},
+		},
+		{
 			`t1: 'a' 'b' t2
     | 'c' t3
     | t2 'f' t3 'g'
@@ -99,7 +102,7 @@ func assertExpectedTokenResult(t *testing.T, origin string, expected []string) {
 }
 
 func withTokenizeResult(t *testing.T, origin string, visitor func(index int, tkn string)) {
-	next := Tokenize(bytes.NewBufferString(origin))
+	next := Tokenize(&RuneSeq{Runes:[]rune(origin)})
 	for i := 0; ; i++ {
 		tkn, err := next()
 		assert.Equal(t, nil, err)
@@ -110,11 +113,27 @@ func withTokenizeResult(t *testing.T, origin string, visitor func(index int, tkn
 	}
 }
 
+func TestRuneSeq(t *testing.T) {
+	testStr := "t名称est哈哈"
+	seq := &RuneSeq{Runes: []rune(testStr)}
+	r, _ := seq.ReadRune()
+	assert.Equal(t, 't', r)
+	r, _ = seq.ReadRune()
+	assert.Equal(t, '名', r)
+	r, _ = seq.ReadRune()
+	assert.Equal(t, '称', r)
+
+	seq.UnreadRune()
+	seq.UnreadRune()
+	r, _ = seq.ReadRune()
+	assert.Equal(t, '名', r)
+}
+
 func TestSimpleTokenPrint(t *testing.T) {
 	t.SkipNow()
-	origin := `a: m dd {a = 1;b="aaa"; print(m)} ddd | haha {a = 2 * a; print(a)} nana`
+	origin := `1 23 4`
 
-	next := Tokenize(bytes.NewBufferString(origin))
+	next := Tokenize(&RuneSeq{Runes:[]rune(origin)})
 	for {
 		tkn, err := next()
 		assert.Equal(t, nil, err)

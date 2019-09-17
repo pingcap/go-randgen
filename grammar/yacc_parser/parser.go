@@ -6,7 +6,7 @@ import (
 	"runtime/debug"
 )
 
-// 代表一个分支中的token序列
+// token sequence of one branch
 type Seq struct {
 	Items []Token
 }
@@ -28,14 +28,14 @@ const (
 	endState             = 4
 )
 
-func skipCommentAndSemicolon(nextToken func() (Token, error)) (t Token, err error)  {
+func skipComment(nextToken func() (Token, error)) (t Token, err error)  {
 	for {
 		t, err = nextToken()
 		if err != nil {
 			return nil, err
 		}
 
-		if !isComment(t) && t.ToString() != ";" {
+		if !isComment(t) {
 			return t, nil
 		}
 	}
@@ -44,7 +44,7 @@ func skipCommentAndSemicolon(nextToken func() (Token, error)) (t Token, err erro
 func collectHeadCodeBlocks(nextToken func() (Token, error)) (t Token, cbs []*CodeBlock, err error)  {
 	cbs = make([]*CodeBlock, 0)
 	for {
-		t, err = skipCommentAndSemicolon(nextToken)
+		t, err = skipComment(nextToken)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -81,7 +81,7 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 	// initState -> delimFetchedState -> termFetchedState ->...
 	//
 	for state != endState {
-		tkn, err = skipCommentAndSemicolon(nextToken)
+		tkn, err = skipComment(nextToken)
 		if err != nil {
 			return nil, nil, err
 		}

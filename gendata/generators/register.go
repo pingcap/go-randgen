@@ -52,6 +52,7 @@ func init() {
 
 	gmap["timestamp"] = &Timestamp{}
 	gmap["english"] = newEnglish()
+	gmap["char"] = NewChar(10)
 	gmap["bool"] = newInt(0, 1, "")
 	gmap["boolean"] = newInt(0, 1, "")
 	gmap["tinyint"] = newInt(-128, 127, "")
@@ -61,6 +62,7 @@ func init() {
 	gmap["mediumint"] = newInt(-8388608, 8388607, "")
 	gmap["mediumint_unsigned"] = newInt(0, 16777215, "")
 	gmap["int"] = newInt(0, -1, "")
+	gmap["int_usigned"] = &Uint{}
 	gmap["integer"] = newInt(0, -1, "")
 	gmap["decimal"] = &Decimal{}
 }

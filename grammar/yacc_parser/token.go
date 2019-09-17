@@ -148,9 +148,9 @@ func (q *quote) tryToggle(other int) bool {
 	return false
 }
 
-func skipSpace(reader io.RuneScanner) (hasSpace bool, r rune, err error) {
+func skipSpace(reader *RuneSeq) (hasSpace bool, r rune, err error) {
 	for {
-		r, _, err = reader.ReadRune()
+		r, err = reader.ReadRune()
 		if err != nil {
 			return false, 0, err
 		}
@@ -163,9 +163,44 @@ func skipSpace(reader io.RuneScanner) (hasSpace bool, r rune, err error) {
 	}
 }
 
+func unreadTwice(reader *RuneSeq) error {
+	reader.UnreadRune()
+	reader.UnreadRune()
+	return nil
+}
+
+type RuneSeq struct {
+	Runes []rune
+	Pos int
+}
+
+func (r *RuneSeq) ReadRune() (rune, error) {
+	if r.Pos >= len(r.Runes) {
+		return 0, io.EOF
+	}
+
+	cur := r.Runes[r.Pos]
+	r.Pos++
+	return cur, nil
+}
+
+func (r *RuneSeq) UnreadRune() {
+	r.Pos--
+}
+
+// see if next rune equals expect  without read
+func (r *RuneSeq) PeekEqual(expect rune) bool {
+	if r.Pos >= len(r.Runes) {
+		return false
+	}
+
+	return r.Runes[r.Pos] == expect
+}
+
 // Tokenize is used to wrap a reader into a Token producer.
 // simple lexer not look back, have some problem when quote not pair
-func Tokenize(reader io.RuneScanner) func() (Token, error) {
+// runeScanner must support unread twice
+func Tokenize(reader *RuneSeq) func() (Token, error) {
 	q := quote{0}
 	pStack := &stack{}
 	return func() (Token, error) {
@@ -182,7 +217,7 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 		common := commonAttr{hasPreSpace:hasSpace}
 
 		// Handle delimiter.
-		if r == ':' || r == '|' {
+		if (r == ':' && !reader.PeekEqual('=')) || r == '|' {
 			return &operator{string(r)}, nil
 		}
 
@@ -213,7 +248,7 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 
 		for {
 			last = r
-			r, _, err = reader.ReadRune()
+			r, err = reader.ReadRune()
 			if err == io.EOF {
 				break
 			} else if err != nil {
@@ -241,10 +276,9 @@ func Tokenize(reader io.RuneScanner) func() (Token, error) {
 				}
 			}
 
-			if (unicode.IsSpace(r) || isDelimiter(r) || isSpecialRune(r)) && !q.isInSome() {
-				if err := reader.UnreadRune(); err != nil {
-					panic(fmt.Sprintf("Unable to unread rune: %s.", string(r)))
-				}
+			if (unicode.IsSpace(r) || r == '|' || isSpecialRune(r) ||
+				(r == ':' && !reader.PeekEqual('='))) && !q.isInSome() {
+				reader.UnreadRune()
 				break
 			}
 
@@ -310,17 +344,17 @@ func isSpecialRune(r rune) bool {
 	return ok
 }
 
-func isDelimiter(r rune) bool {
-	return r == '|' || r == ':'
-}
-
 func isNonTerminal(token string) bool {
+	allDigit := true
 	for _, c := range token {
 		if !unicode.IsLower(c) && !unicode.IsDigit(c) && c != '_' {
 			return false
 		}
+		if !unicode.IsDigit(c) {
+			allDigit = false
+		}
 	}
-	return true
+	return !allDigit
 }
 
 func isEOF(tkn Token) bool {

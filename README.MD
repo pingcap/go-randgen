@@ -16,6 +16,13 @@ go get -u github.com/jteeuwen/go-bindata/...
 make all
 ```
 
+## 特色
+
+ 1. 内置一个默认zz文件，也就是说你只给一个yy文件，就能自动生成sql
+ 2. 兼容mysql randgen的yy文件的语法，只要在yy文件中没有插入perl代码，就可以直接拿过来运行
+ 3. 和mysql randgen支持嵌入perl代码类似，go randgen支持嵌入lua代码
+ 4. 纯Go实现，设计得非常灵活，非常易于Hack
+
 ## Quick start
 
 randgen根据用户指定的zz文件初始化数据库（建表与插入数据），yy文件来随机生成sql。
@@ -37,8 +44,9 @@ randgen根据用户指定的zz文件初始化数据库（建表与插入数据�
 ，然后通过`-Z`参数指定路径，具体规则见语法手册。
 
 和randgen细节上的不同：
- 3. 支持单行注释#，以及多行注释/* ... */
- 4. 全部以`query`作为根规则（mysql randgen在生成第一条语句时会使用`query_init`作为根规则）
+ 1. 支持单行注释#，以及多行注释/* ... */
+ 2. 全部以`query`作为根规则（mysql randgen在生成第一条语句时会使用`query_init`作为根规则）
+ 3. bnf表达式的结尾不需要加分号，当然，如果你加了也不会出错，因为我们兼容mysql randgen，会自动作处理，忽略它
 
 ## 语法手册
 
@@ -131,6 +139,8 @@ go randgen中支持的所有数据生成规则见[链接](gendata/generators/reg
 
 #### 关键字
 
+关键字都是以下划线开头
+
 获取表名和字段名的接口:
 
  - `_table`: 从生成的表中随机选择一张
@@ -138,7 +148,7 @@ go randgen中支持的所有数据生成规则见[链接](gendata/generators/reg
  - `_field_int`: 从整型字段中随机选择一个
  - `_field_char`: 从char和varchar类型字段中随机选择一个
  
-随机生成数据的一些糖:
+随机生成数据的一些糖(字符相关的会在两边自动生成双引号):
 
  - `_digit`: 随机生成一个0-9的数字
  - `_letter`: 随机生成一个'a'到'z'之间的字母
@@ -167,7 +177,7 @@ query:{a = 1}
 正常的代码块会在每次分支被运行到的时候执行一遍。
 
 go randgen支持在文件的头部插入一个代码块，这个代码块在整个
-sql执行的过程中只会执行一次，称为"头部代码块"，主要用于变量或者函数的申明：
+sql执行的过程中只会执行一次，称为**头部代码块**，主要用于变量或者函数的申明：
 
 ```
 
@@ -264,6 +274,67 @@ CREATE TABLE table2 (a int);
 CREATE TABLE table3 (a int);
 ......
 ```
+
+ - 生成多条相邻的sql语句
+ 
+有的时候我们希望相关的几条sql生成在相邻的位置，比如在测试
+Prepared statement时，下面例子改自[examples/functions.yy](examples/functions.yy) 
+
+```
+query:
+	SET @stmt = {print('"')} select {print('"')};
+	PREPARE stmt FROM @stmt_create ; 
+	EXECUTE stmt ;
+	
+select:
+    SELECT * FROM _table
+```
+
+此时如果你指定生成的sql数量为3（即`-Q`参数指定为3）的话，那么就
+会生成如下的sql
+
+```sql
+SET @stmt = " SELECT * FROM _table ";
+PREPARE stmt FROM @stmt_create; 
+EXECUTE stmt;
+```
+
+指定生成6条sql的话，就会把上面的sql生成两遍。
+
+假如指定生成sql数目为2的话，那么会生成：
+
+```sql
+SET @stmt = " SELECT * FROM _table ";
+PREPARE stmt FROM @stmt_create; 
+```
+
+从这里我们也可以看出`;`的语义，这个语义继承自mysql randgen，
+表示一次性生成数条相邻的sql
+
+## How to hack
+
+相比mysql randgen，go randgen最大的特点就是易于Hack
+，几乎没有任何硬编码，当你觉得缺少什么特性时，可以非常
+方便地自己加上
+
+### hack zz data
+
+如果你觉得go randgen在zz文件中data字段提供的
+数据生成指令不够用时，
+可以进入[gendata/generators/register.go](gendata/generators/register.go)
+的`init`方法里添加。
+
+假设你在里面添加了一个`aaa`指令，除了能够在
+zz的data字段中使用`"aaa"`指令外，
+在yy文件中也会自动增加一个`_aaa`关键字可以使用
+
+### hack yy key word
+
+如果觉得yy中提供的关键字不够用，可以在
+[gendata/gendata.go](gendata/gendata.go)
+中的`newKeyfun`方法中添加。
+
+
 
 ## 与Mysql randgen不同的地方
 
