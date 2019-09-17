@@ -32,9 +32,10 @@ make all
 ## 特色
 
  1. 内置一个默认zz文件，也就是说你只给一个yy文件，就能自动生成sql
- 2. 兼容mysql randgen的yy文件的语法，只要在yy文件中没有插入perl代码，就可以直接拿过来运行
- 3. 和mysql randgen支持嵌入perl代码类似，go randgen支持嵌入lua代码
- 4. 纯Go实现，设计得非常灵活，非常易于Hack
+ 2. 生成sql的过程中不需要连接数据库，非常迅速
+ 3. 兼容mysql randgen的yy文件的语法，只要在yy文件中没有插入perl代码，就可以直接拿过来运行
+ 4. 和mysql randgen支持嵌入perl代码类似，go randgen支持嵌入lua代码
+ 5. 纯Go实现，设计得非常灵活，非常易于Hack
 
 ## Quick start
 
@@ -149,6 +150,12 @@ go randgen中支持的所有数据生成规则见[链接](gendata/generators/reg
 
  - 单行注释`#`
  - 多行注释`/**/` 
+
+#### 标识符的分类
+
+ - 非终结符：由小写字母或者下划线组成
+ - 终结符：大写字母，特殊字符或者数字组成，但是不能以下划线开头
+ - 关键字：下划线开头
 
 #### 关键字
 
