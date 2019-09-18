@@ -69,12 +69,12 @@ func TestByYyWithoutKeyword(t *testing.T) {
 
 func TestByYy(t *testing.T) {
 	t.SkipNow()
-	sqls, err := ByYy(yy, 10, "query", 5, map[string]func() string{
-		"_table": func() string {
-			return "aaa_tabl"
+	sqls, err := ByYy(yy, 10, "query", 5, map[string]func() (string, error){
+		"_table": func() (string, error) {
+			return "aaa_tabl", nil
 		},
-		"_field": func() string {
-			return "ffff"
+		"_field": func() (string, error) {
+			return "ffff", nil
 		},
 	}, false)
 	assert.Equal(t, nil, err)

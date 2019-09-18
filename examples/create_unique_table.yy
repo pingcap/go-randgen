@@ -1,4 +1,10 @@
-/* test create unique table */
+/*
+
+test create unique table
+
+used in unittest, if you change it, you should change the relational unittest in `cmd/cmd_test.go`
+
+*/
 
 {
 i = 1

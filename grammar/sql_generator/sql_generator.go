@@ -213,7 +213,9 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			}
 
 			// key word parse
-			if res, ok := i.keyFunc.Gen(item.ToString()); ok {
+			if res, ok, err := i.keyFunc.Gen(item.ToString()); err != nil {
+				return !firstWrite, err
+			} else if ok {
 				i.printDebugInfo(res, parents)
 				_, err := writer.WriteString(res)
 				if err != nil {

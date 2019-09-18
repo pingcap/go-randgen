@@ -3,6 +3,7 @@ package gendata
 import (
 	"bytes"
 	"fmt"
+	"github.com/pingcap/errors"
 	"github.com/yuin/gopher-lua"
 	"github.com/dqinyuan/go-randgen/gendata/generators"
 	"math/rand"
@@ -87,7 +88,7 @@ func ByConfig(config *ZzConfig) ([]string, Keyfun, error) {
 		sqls = append(sqls, wrapInInsert(tableStmt.name, valuesStmt))
 	}
 
-	return sqls, newKeyfun(tableStmts, fieldExecs), nil
+	return sqls, NewKeyfun(tableStmts, fieldExecs), nil
 }
 
 const insertTemp = "insert into %s values %s"
@@ -125,9 +126,9 @@ var fClass = map[string]int{
 	"bigint":    fInt,
 }
 
-type Keyfun map[string]func() string
+type Keyfun map[string]func() (string, error)
 
-func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
+func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 	fieldsInt := make([]*fieldExec, 0)
 	fieldsChar := make([]*fieldExec, 0)
 	for _, fieldExec := range fields {
@@ -141,35 +142,52 @@ func newKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 		}
 	}
 
-	m := map[string]func() string{
-		"_table": func() string {
-			return tables[rand.Intn(len(tables))].name
+	m := map[string]func() (string, error){
+		"_table": func() (string, error) {
+			if len(tables) == 0 {
+				return "", errors.New("there is no table")
+			}
+			return tables[rand.Intn(len(tables))].name, nil
 		},
-		"_field": func() string {
-			return "`" + fields[rand.Intn(len(fields))].name + "`"
+		"_field": func() (string, error) {
+			if len(fields) == 0{
+				return "", errors.New("there is no fields")
+			}
+			return "`" + fields[rand.Intn(len(fields))].name + "`", nil
 		},
-		"_field_int": func() string {
-			return "`" + fieldsInt[rand.Intn(len(fieldsInt))].name + "`"
+		"_field_int": func() (string, error) {
+			if len(fieldsInt) == 0 {
+				return "", errors.New("there is no int fields")
+			}
+			return "`" + fieldsInt[rand.Intn(len(fieldsInt))].name + "`", nil
 		},
-		"_field_char": func() string {
-			return "`" + fieldsChar[rand.Intn(len(fieldsChar))].name + "`"
+		"_field_char": func() (string, error) {
+			if len(fieldsChar) == 0 {
+				return "", errors.New("there is no char fields")
+			}
+			return "`" + fieldsChar[rand.Intn(len(fieldsChar))].name + "`", nil
 		},
 	}
 
 	// port from generators
 	// digit -> _digit
 	generators.Traverse(func(name string, generator generators.Generator) {
-		m["_"+name] = func() string {
-			return generator.Gen()
+		m["_"+name] = func() (string, error) {
+			return generator.Gen(), nil
 		}
 	})
 
 	return Keyfun(m)
 }
 
-func (k Keyfun) Gen(key string) (string, bool) {
+func (k Keyfun) Gen(key string) (string, bool, error) {
 	if kf, ok := k[key]; ok {
-		return kf(), true
+		var res string
+		if res, err := kf(); err != nil {
+			return res, true, err
+		}
+
+		return res, true, nil
 	}
-	return "", false
+	return "", false, nil
 }
