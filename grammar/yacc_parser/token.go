@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 	"unicode"
+	"github.com/emirpasic/gods/stacks/arraystack"
 )
 
 type Token interface {
@@ -202,7 +203,7 @@ func (r *RuneSeq) PeekEqual(expect rune) bool {
 // runeScanner must support unread twice
 func Tokenize(reader *RuneSeq) func() (Token, error) {
 	q := quote{0}
-	pStack := &stack{}
+	pStack := arraystack.New()
 	return func() (Token, error) {
 		var r rune
 		var err error
@@ -233,7 +234,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 
 		// handle code block
 		if r == '{' {
-			pStack.push(r)
+			pStack.Push(r)
 		}
 
 		// handle special rune
@@ -256,13 +257,13 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 			}
 
 			// in code block
-			if !pStack.empty() {
+			if !pStack.Empty() {
 				stringBuf += string(r)
 				if r == '{' {
-					pStack.push(r)
+					pStack.Push(r)
 				} else if r == '}' {
-					pStack.pop()
-					if pStack.empty() {
+					pStack.Pop()
+					if pStack.Empty() {
 						break
 					}
 				}

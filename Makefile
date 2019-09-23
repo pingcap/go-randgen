@@ -5,7 +5,7 @@ resource:
 	go generate ./resource
 
 bin:
-	go build -o go-randgen cmd/randgen/*.go
+	go build -o go-randgen cmd/go-randgen/*.go
 
 test:
 	go test ./...

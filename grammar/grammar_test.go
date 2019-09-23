@@ -27,6 +27,18 @@ fields:
     | fieldA, fieldB
 `
 
+func TestByYyWithoutKeyword(t *testing.T) {
+	t.SkipNow()
+	num := 10
+	sqls, err := ByYy(yyWithOutKeyword, num, "query", 5, nil, false)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, num, len(sqls))
+
+	for _, sql := range sqls {
+		fmt.Println(sql)
+	}
+}
+
 const yy = `
 query:
     {if(a==nil) then a = 1 end} select
@@ -43,28 +55,6 @@ select:
     ) as t
     WINDOW w AS (ORDER BY fieldA);
 `
-
-const luaYy = `
-{
-f={a=1, b=3}
-arr={0,2,3,4}
-}
-
-query:
-  {print(arr[f.a])} | {print(arr[f.b])}
-`
-
-func TestByYyWithoutKeyword(t *testing.T) {
-	t.SkipNow()
-	num := 10
-	sqls, err := ByYy(yyWithOutKeyword, num, "query", 5, nil, false)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, num, len(sqls))
-
-	for _, sql := range sqls {
-		fmt.Println(sql)
-	}
-}
 
 
 func TestByYy(t *testing.T) {
@@ -84,13 +74,27 @@ func TestByYy(t *testing.T) {
 	}
 }
 
+const luaYy = `
+{
+f={a=1, b=3}
+arr={0,2,3,4}
+}
+
+query:
+  {print(arr[f.a])} | {print(arr[f.b])}
+`
+
 func TestLuaYy(t *testing.T) {
-	t.SkipNow()
 	sqls, err := ByYy(luaYy, 10, "query", 5,nil, false)
 	assert.Equal(t, nil, err)
 
 	for _, sql := range sqls {
-		fmt.Println(sql)
+		assert.Condition(t, func() (success bool) {
+			if sql == "0" || sql == "3" {
+				return true
+			}
+			return false
+		}, "lua yy should only output 0 or 3")
 	}
 }
 
@@ -149,6 +153,51 @@ func TestSemiColon(t *testing.T) {
 	for i, sql := range sqls {
 		//fmt.Println(sql)
 		assert.Equal(t, expected[i], sql)
+	}
+}
+
+const testPreSpaceYy = `
+query: frame_clause
+
+frame_units:
+    RANGE
+
+frame_between:
+	BETWEEN
+
+frame_clause:
+	frame_units frame_between
+`
+
+func TestPreSpace(t *testing.T) {
+	sqls, err := ByYy(testPreSpaceYy, 6, "query", 5, nil, false)
+	assert.Equal(t, nil, err)
+
+	for _, sql := range sqls {
+		assert.Equal(t, "RANGE BETWEEN", sql)
+	}
+}
+
+const testKeyWordYy = `
+
+query:
+    A _table B _field
+`
+
+func TestKeyWord(t *testing.T) {
+	sqls, err := ByYy(testKeyWordYy, 10,
+		"query", 5, map[string]func() (string, error){
+		"_table": func() (string, error) {
+			return "aaa_tabl", nil
+		},
+		"_field": func() (string, error) {
+			return "ffff", nil
+		},
+	}, false)
+	assert.Equal(t, nil, err)
+
+	for _, sql := range sqls {
+		assert.Equal(t, "A aaa_tabl B ffff", sql)
 	}
 }
 

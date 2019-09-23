@@ -182,12 +182,11 @@ func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 
 func (k Keyfun) Gen(key string) (string, bool, error) {
 	if kf, ok := k[key]; ok {
-		var res string
 		if res, err := kf(); err != nil {
 			return res, true, err
+		} else {
+			return res, true, nil
 		}
-
-		return res, true, nil
 	}
 	return "", false, nil
 }

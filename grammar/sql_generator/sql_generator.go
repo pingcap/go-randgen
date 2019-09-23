@@ -252,7 +252,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 				hasSubWrite, err = i.generateSQLRandomly(item.ToString(), parents, writer, item.HasPreSpace())
 			}
 
-			if !firstWrite && hasSubWrite {
+			if firstWrite && hasSubWrite {
 				firstWrite = false
 			}
 
