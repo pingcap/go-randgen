@@ -7,7 +7,7 @@
 *.iml
 *.out
 *.sql
-go-randgen
+/go-randgen
 go-randgen-debug
 out
 gen
