@@ -52,41 +52,37 @@ func main() {
 	}
 }
 
-func getSqls() (ddls []string, sqls []string) {
-
+func getDdls() ([]string, gendata.Keyfun) {
+	var zzBs []byte
 	var err error
-	var keyf gendata.Keyfun
-
-	if !skipZz {
-		var zzBs []byte
-		if zzPath == "" {
-			log.Println("load default zz")
-			zzBs, err = resource.Asset("resource/default.zz.lua")
-		} else {
-			zzBs, err = ioutil.ReadFile(zzPath)
-		}
-
-		if err != nil {
-			log.Fatalf("load zz fail, %v\n", err)
-		}
-
-		zz := string(zzBs)
-
-		ddls, keyf, err = gendata.ByZz(zz)
-		if err != nil {
-			log.Fatalln(err)
-		}
+	if zzPath == "" {
+		log.Println("load default zz")
+		zzBs, err = resource.Asset("resource/default.zz.lua")
 	} else {
-		keyf = gendata.NewKeyfun(nil, nil)
+		zzBs, err = ioutil.ReadFile(zzPath)
 	}
 
+	if err != nil {
+		log.Fatalf("load zz fail, %v\n", err)
+	}
+
+	zz := string(zzBs)
+
+	ddls, keyf, err := gendata.ByZz(zz)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	return ddls, keyf
+}
+
+func getRandSqls(keyf gendata.Keyfun) []string {
 	yyBs, err := ioutil.ReadFile(yyPath)
 	if err != nil {
-		log.Fatalf("load yy from %s fail, %v\n", yyPath, err)
+		log.Fatalf("Fatal Error: load yy from %s fail, %v\n", yyPath, err)
 	}
 
 	yy := string(yyBs)
-
 
 	if maxRecursive <= 0 {
 		maxRecursive = math.MaxInt32
@@ -94,8 +90,8 @@ func getSqls() (ddls []string, sqls []string) {
 
 	randomSqls, err := grammar.ByYy(yy, queries, root, maxRecursive, keyf, debug)
 	if err != nil {
-		log.Fatalln("Error: " + err.Error())
+		log.Fatalln("Fatal Error: " + err.Error())
 	}
 
-	return ddls, randomSqls
+	return randomSqls
 }

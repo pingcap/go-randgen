@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/dqinyuan/go-randgen/gendata"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
@@ -41,7 +42,17 @@ func newGentestCmd() *cobra.Command {
 
 // generate all sqls and write them into file
 func gentestAction(cmd *cobra.Command, args []string) {
-	ddls, randomSqls := getSqls()
+
+	var keyf gendata.Keyfun
+	var ddls []string
+
+	if !skipZz {
+		ddls, keyf = getDdls()
+	} else {
+		keyf = gendata.NewKeyfun(nil, nil)
+	}
+
+	randomSqls := getRandSqls(keyf)
 
 	if breake {
 		if !skipZz {

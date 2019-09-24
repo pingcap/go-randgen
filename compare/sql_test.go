@@ -1,6 +1,7 @@
 package compare
 
 import (
+	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -95,4 +96,13 @@ func TestQuery(t *testing.T) {
 
 	assert.Equal(t, true, r1.NonOrderEqualTo(r2))
 	assert.Equal(t, false, r1.BytesEqualTo(r2))
+}
+
+func TestQueryMysql(t *testing.T)  {
+	db, err := OpenDBWithRetry("mysql", "root:123456@tcp(127.0.0.1:3306)/randgen")
+	assert.Equal(t, nil, err)
+
+	result, err := query(db, "create table test(a int)")
+	fmt.Println(result)
+	fmt.Println(err)
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"strings"
 	"time"
@@ -118,7 +119,7 @@ func (s *SqlResult) ColBytesEqualTo(another *SqlResult, r, c int, col []byte) bo
 }
 
 func (result *SqlResult) String() string {
-	if result.Data == nil || result.Header == nil {
+	if result == nil || result.Data == nil || result.Header == nil {
 		return "no result"
 	}
 
@@ -236,13 +237,12 @@ func query(db *sql.DB, sql string) (*SqlResult, error) {
 	return &SqlResult{Data: allRows, Rows:rowSet, Header: cols, ColumnTypes: types}, nil
 }
 
-func ExecSqlsInDbs(sqls []string, db1 *sql.DB, db2 *sql.DB) (string, error) {
+func ExecSqlsInDbs(sqls []string, dbs ... *sql.DB) (string, error) {
 	for _, sql := range sqls {
-		if _, err := db1.Exec(sql); err != nil {
-			return sql, err
-		}
-		if _, err := db2.Exec(sql); err != nil {
-			return sql, err
+		for _, db := range dbs {
+			if _, err := db.Exec(sql); err != nil {
+				return sql, err
+			}
 		}
 	}
 

@@ -9,5 +9,6 @@
 *.sql
 /go-randgen
 go-randgen-debug
+dump/
 out
 gen
