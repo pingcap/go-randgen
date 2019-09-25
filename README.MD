@@ -73,7 +73,43 @@ randgen根据用户指定的zz文件初始化数据库（建表与插入数据�
 示例：把go-randgen作为一个库生成ddl的示例：
 
 ```go
+package test
 
+import (
+	"fmt"
+	"github.com/dqinyuan/go-randgen/gendata"
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
+
+func TestByZz(t *testing.T)  {
+	ddls, keyf, err := gendata.ByZz("")
+	assert.Equal(t, nil, err)
+
+	// ddls是全部的用于生成表结构和插入数据的sql
+	fmt.Println(len(ddls))
+
+	// 随机得到一张表
+	if table, err := keyf["_table"](); err == nil {
+		fmt.Println(table)
+	}
+
+	// 随机得到一个字段
+	if field, err := keyf["_field"](); err == nil {
+		fmt.Println(field)
+	}
+
+	// 随机得到一个整型字段
+	if fieldInt, err := keyf["_field_int"](); err == nil {
+		fmt.Println(fieldInt)
+	}
+
+    // 随机得到一个char或varchar类型字段
+	if fieldChar, err := keyf["_field_char"](); err == nil {
+		fmt.Println(fieldChar)
+	}
+
+}
 ```
 
 ## 语法手册
