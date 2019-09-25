@@ -83,6 +83,7 @@ import (
 )
 
 func TestByZz(t *testing.T)  {
+	// 使用built-in的zz, 也可以选择自己传一个zz文本进去,zz的写法参考后面的语法手册
 	ddls, keyf, err := gendata.ByZz("")
 	assert.Equal(t, nil, err)
 
