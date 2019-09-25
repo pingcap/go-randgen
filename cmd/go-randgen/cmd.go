@@ -42,6 +42,7 @@ func initCmd() {
 
 	rootCmd.AddCommand(newExecCmd())
 	rootCmd.AddCommand(newGentestCmd())
+	rootCmd.AddCommand(newGenDataCmd())
 }
 
 func main() {
