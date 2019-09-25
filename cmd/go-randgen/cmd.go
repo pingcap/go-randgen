@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/dqinyuan/go-randgen/gendata"
 	"github.com/dqinyuan/go-randgen/grammar"
-	"github.com/dqinyuan/go-randgen/resource"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
@@ -56,15 +55,14 @@ func main() {
 func getDdls() ([]string, gendata.Keyfun) {
 	var zzBs []byte
 	var err error
-	if zzPath == "" {
-		log.Println("load default zz")
-		zzBs, err = resource.Asset("resource/default.zz.lua")
-	} else {
+	if zzPath != "" {
+		log.Printf("load zz from %s\n", zzPath)
 		zzBs, err = ioutil.ReadFile(zzPath)
-	}
-
-	if err != nil {
-		log.Fatalf("load zz fail, %v\n", err)
+		if err != nil {
+			log.Fatalf("load zz fail, %v\n", err)
+		}
+	} else {
+		log.Println("load default zz")
 	}
 
 	zz := string(zzBs)
@@ -78,6 +76,7 @@ func getDdls() ([]string, gendata.Keyfun) {
 }
 
 func getRandSqls(keyf gendata.Keyfun) []string {
+	log.Printf("load yy from %s\n", yyPath)
 	yyBs, err := ioutil.ReadFile(yyPath)
 	if err != nil {
 		log.Fatalf("Fatal Error: load yy from %s fail, %v\n", yyPath, err)

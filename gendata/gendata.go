@@ -3,9 +3,10 @@ package gendata
 import (
 	"bytes"
 	"fmt"
+	"github.com/dqinyuan/go-randgen/gendata/generators"
+	"github.com/dqinyuan/go-randgen/resource"
 	"github.com/pingcap/errors"
 	"github.com/yuin/gopher-lua"
-	"github.com/dqinyuan/go-randgen/gendata/generators"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -55,6 +56,16 @@ func (z *ZzConfig) genDdls() ([]*tableStmt, []*fieldExec, error) {
 }
 
 func ByZz(zz string) ([]string, Keyfun, error) {
+	// if zz is empty string, will use built-in default zz file
+	if zz == "" {
+		zzBs, err := resource.Asset("resource/default.zz.lua")
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "default resource load fail")
+		}
+		zz = string(zzBs)
+	}
+
+
 	l, err := runLua(zz)
 	if err != nil {
 		return nil, nil, err
