@@ -21,7 +21,7 @@ CREATE TABLE table5 (a int);`
 func TestCreateUniqueTable(t *testing.T) {
 	reInitCmd()
 	_, err := executeCommand(rootCmd, "gentest", "-Y",
-		"../../examples/create_unique_table.yy", "-B", "-Q", "5", "-O", "cute", "--skip-zz")
+		"../../examples/toturial/create_unique_table.yy", "-B", "-Q", "5", "-O", "cute", "--skip-zz")
 	assert.Equal(t, nil, err)
 
 	content, err := ioutil.ReadFile("./cute.rand.sql")

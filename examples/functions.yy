@@ -11,7 +11,7 @@ query:
 ;
 
 prepare_execute:
-	SET @stmt = {print('"')} select {print('"')}; SET @stmt_create = CONCAT("CREATE TABLE `ps` AS ", @stmt );
+	SET @stmt = {print('"')}select{print('"')}; SET @stmt_create = CONCAT("CREATE TABLE `ps` AS ", @stmt );
 	PREPARE stmt FROM @stmt_create ; EXECUTE stmt ;
 	SET @stmt_ins = CONCAT("INSERT INTO `ps` ", @stmt) ;
 	PREPARE stmt FROM @stmt_ins; EXECUTE stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt; DROP TABLE `ps`;

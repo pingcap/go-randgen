@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dqinyuan/go-randgen/compare"
+	"github.com/dqinyuan/go-randgen/gendata"
 	"github.com/fatih/color"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
@@ -112,9 +113,6 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 }
 
 func execAction(cmd *cobra.Command, args []string) {
-	// compare two dsn
-	ddls, keyf := getDdls()
-
 	db1, err := compare.OpenDBWithRetry("mysql", dsn1)
 	if err != nil {
 		log.Fatalf("connect dsn1 %s error %v\n", dsn1, err)
@@ -127,14 +125,25 @@ func execAction(cmd *cobra.Command, args []string) {
 
 	log.Println("Open DB ok, starting generate data in two db by ddls")
 
-	// ddls must exec without error
-	errSql, err := compare.ExecSqlsInDbs(ddls, db1, db2)
-	if err != nil {
-		log.Printf("Fatal Error: data prepare ddl exec error %v\n", err)
-		log.Fatalln(errSql)
-	}
 
-	log.Println("generating data ok")
+	var keyf gendata.Keyfun
+
+	if !skipZz {
+		var ddls []string
+		ddls, keyf = getDdls()
+
+		// ddls must exec without error
+		errSql, err := compare.ExecSqlsInDbs(ddls, db1, db2)
+		if err != nil {
+			log.Printf("Fatal Error: data prepare ddl exec error %v\n", err)
+			log.Fatalln(errSql)
+		}
+
+		log.Println("generating data ok")
+	} else {
+		keyf = gendata.NewKeyfun(nil, nil)
+		log.Println("skip generate data")
+	}
 
 	if isDirExist(dumpDir) {
 		log.Fatalln("Fatal Error: dump directory already exist")

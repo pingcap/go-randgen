@@ -20,6 +20,7 @@ var maxRecursive int
 var root string
 
 var debug bool
+var skipZz bool
 
 var rootCmd = &cobra.Command{
 	Use:   "go-randgen",
@@ -38,6 +39,8 @@ func initCmd() {
 		"yy expression most recursive number, if you want recursive without limit ,set it <= 0")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false,
 		"print detail generate path")
+	rootCmd.PersistentFlags().BoolVar(&skipZz, "skip-zz", false,
+		"skip gen data phase, only use yy to generate random sqls")
 
 	rootCmd.AddCommand(newExecCmd())
 	rootCmd.AddCommand(newGentestCmd())

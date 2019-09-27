@@ -1,4 +1,9 @@
-/* interval expr test */
+/*
+interval expr test
+
+not use _table or _fields, use set --skip-zz may be better
+
+ */
 
 query:
     SELECT date_val AS dtest

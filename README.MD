@@ -323,32 +323,6 @@ order:
 #....省略其他规则
 ```
 
- - 测试create语句时创建名字不冲突的表（插入lua脚本,利用头部代码块）
-
-```
-# 申明i为1
-{
-i = 1
-}
-
-query: 
-    create
-    
-create:
-    CREATE TABLE 
-    {print(string.format("table%d", i)); i = i+1}
-    (a int)
-```
-
-生成结果：
-
-```sql
-CREATE TABLE table1 (a int);
-CREATE TABLE table2 (a int);
-CREATE TABLE table3 (a int);
-......
-```
-
  - 生成多条相邻的sql语句
  
 有的时候我们希望相关的几条sql生成在相邻的位置，比如在测试
@@ -384,6 +358,55 @@ PREPARE stmt FROM @stmt_create;
 
 从这里我们也可以看出`;`的语义，这个语义继承自mysql randgen，
 表示一次性生成数条相邻的sql
+
+ - 测试create语句时创建名字不冲突的表（）
+
+
+方案一: 插入lua脚本,利用头部代码块
+
+```
+# 申明i为1
+{
+i = 1
+}
+
+query: 
+    create
+    
+create:
+    CREATE TABLE 
+    {print(string.format("table%d", i)); i = i+1}
+    (a int)
+```
+
+生成结果：
+
+```sql
+CREATE TABLE table1 (a int);
+CREATE TABLE table2 (a int);
+CREATE TABLE table3 (a int);
+......
+```
+
+方案2：先创建表，然后再把它删除了，利用之前提到的`;`符号
+
+```
+query:
+    create
+    
+create:
+    create table t (a int); drop table t
+```
+
+生成结果：
+
+```
+create table t (a int); 
+drop table t;
+create table t (a int); 
+drop table t;
+...
+```
 
 ## How to hack
 

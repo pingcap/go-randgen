@@ -13,7 +13,6 @@ import (
 var format bool
 var breake bool
 var outPath string
-var skipZz bool
 
 func newGentestCmd() *cobra.Command {
 	gentestCmd := &cobra.Command{
@@ -34,8 +33,6 @@ func newGentestCmd() *cobra.Command {
 		"break zz yy result to two resource")
 	gentestCmd.Flags().StringVarP(&outPath, "output", "O","output",
 		"sql output file path")
-	gentestCmd.Flags().BoolVar(&skipZz, "skip-zz", false,
-		"skip gen data phase, only use yy to generate random sqls")
 
 	return gentestCmd
 }
