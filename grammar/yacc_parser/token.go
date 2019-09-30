@@ -1,11 +1,10 @@
 package yacc_parser
 
 import (
-	"fmt"
-	"io"
-	"strings"
-	"unicode"
 	"github.com/emirpasic/gods/stacks/arraystack"
+	"github.com/pkg/errors"
+	"io"
+	"unicode"
 )
 
 type Token interface {
@@ -105,11 +104,37 @@ func (c *CodeBlock) ToString() string {
 }
 
 const (
-	inSingQuoteStr = iota + 1
+	inSingQuoteStr = iota
 	inDoubleQuoteStr
 	inOneLineComment
 	inComment
+	inCodeBlock
+	inCodeBlockStr
+	inKeyWord
+	inNonTerminal
+	inTerminal
 )
+
+var stateMap = map[rune]int{
+	'\'': inSingQuoteStr,
+	'"': inDoubleQuoteStr,
+	'#': inOneLineComment,
+	'{': inCodeBlock,
+	'_': inKeyWord,
+}
+
+func runeInitState(r rune) int {
+	if s, ok := stateMap[r]; ok {
+		return s
+	}
+
+	if unicode.IsLower(r) {
+		return inNonTerminal
+	}
+
+	return inTerminal
+}
+
 
 func getByQuote(r rune) int {
 	if r == '"' {
@@ -164,14 +189,9 @@ func skipSpace(reader *RuneSeq) (hasSpace bool, r rune, err error) {
 	}
 }
 
-func unreadTwice(reader *RuneSeq) error {
-	reader.UnreadRune()
-	reader.UnreadRune()
-	return nil
-}
-
 type RuneSeq struct {
 	Runes []rune
+	// next position to read
 	Pos int
 }
 
@@ -189,6 +209,10 @@ func (r *RuneSeq) UnreadRune() {
 	r.Pos--
 }
 
+func (r *RuneSeq) SetPos(newPos int)  {
+	r.Pos = newPos
+}
+
 // see if next rune equals expect  without read
 func (r *RuneSeq) PeekEqual(expect rune) bool {
 	if r.Pos >= len(r.Runes) {
@@ -198,12 +222,29 @@ func (r *RuneSeq) PeekEqual(expect rune) bool {
 	return r.Runes[r.Pos] == expect
 }
 
+// see if last rune equals expect
+func (r *RuneSeq) LastEqual(exepect rune) bool {
+	if r.Pos <= 1 {
+		return false
+	}
+
+	return r.Runes[r.Pos-2] == exepect
+}
+
+func (r *RuneSeq) Slice(from int) string {
+	return string(r.Runes[from:r.Pos])
+}
+
+func tknEnd(reader *RuneSeq, r rune) bool {
+	return unicode.IsSpace(r) || r == '|' || isSpecialRune(r) || r == '#' || r == '{' ||
+		(r == ':' && !reader.PeekEqual('=')) || (r == '/' && reader.PeekEqual('*'))
+}
+
 // Tokenize is used to wrap a reader into a Token producer.
 // simple lexer not look back, have some problem when quote not pair
 // runeScanner must support unread twice
 func Tokenize(reader *RuneSeq) func() (Token, error) {
-	q := quote{0}
-	pStack := arraystack.New()
+	stack := arraystack.New()
 	return func() (Token, error) {
 		var r rune
 		var err error
@@ -222,114 +263,135 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 			return &operator{string(r)}, nil
 		}
 
-		// Toggle isInsideStr.
-		if r == '\'' || r == '"' {
-			q.tryToggle(getByQuote(r))
-		}
-
-		// handle one line comment
-		if r == '#' {
-			q.tryToggle(inOneLineComment)
-		}
-
-		// handle code block
-		if r == '{' {
-			pStack.Push(r)
-		}
-
 		// handle special rune
 		if isSpecialRune(r) {
 			return &terminal{common,string(r)}, nil
 		}
 
-		// Handle stringLiteral or identifier
-		var last rune
-		var stringBuf string
-		stringBuf = string(r)
+		state := runeInitState(r)
+		if state == inCodeBlock {
+			stack.Push('{')
+		}
+
+		initPos := reader.Pos - 1
 
 		for {
-			last = r
 			r, err = reader.ReadRune()
-			if err == io.EOF {
-				break
-			} else if err != nil {
+			if err != nil && err != io.EOF {
 				return nil, err
 			}
 
-			// in code block
-			if !pStack.Empty() {
-				stringBuf += string(r)
+			// all state must handle io.EOF first
+			switch state {
+			case inNonTerminal:
+				if err == io.EOF {
+					return &nonTerminal{common, reader.Slice(initPos)}, nil
+				}
+				if tknEnd(reader, r) {
+					reader.UnreadRune()
+					return &nonTerminal{common, reader.Slice(initPos)}, nil
+				}
+				// nonTerminal can only be composed of lower word, digit or '_'
+				if !unicode.IsLower(r) && !unicode.IsDigit(r) && r != '_' {
+					state = inTerminal
+				}
+
+			case inTerminal:
+				if err == io.EOF {
+					return &terminal{common, reader.Slice(initPos)}, nil
+				}
+				if tknEnd(reader, r) {
+					reader.UnreadRune()
+					return &terminal{common, reader.Slice(initPos)}, nil
+				}
+
+				if reader.LastEqual('/') && r == '*' {
+					state = inComment
+				}
+			case inKeyWord:
+				if err == io.EOF || tknEnd(reader, r) {
+					if err != io.EOF {
+						reader.UnreadRune()
+					}
+					keywordLiteral := reader.Slice(initPos)
+					if keywordLiteral == "_" {
+						return &terminal{common, keywordLiteral}, nil
+					}
+					return &keyword{common, keywordLiteral}, nil
+				}
+			case inOneLineComment:
+				if err == io.EOF || r == '\n' {
+					return &comment{reader.Slice(initPos)}, nil
+				}
+			case inComment:
+				if err == io.EOF {
+					state = inTerminal
+					reader.SetPos(initPos)
+					continue
+				}
+				if reader.LastEqual('*') && r == '/' {
+					return &comment{reader.Slice(initPos)}, nil
+				}
+			case inSingQuoteStr:
+				// look back
+				if err == io.EOF || r == '\n' {
+					state = inTerminal
+					reader.SetPos(initPos)
+					continue
+				}
+				if r == '\'' {
+					return &terminal{common, reader.Slice(initPos)}, nil
+				}
+
+			case inDoubleQuoteStr:
+				// look back
+				if err == io.EOF || r == '\n' {
+					state = inTerminal
+					reader.SetPos(initPos)
+					continue
+				}
+				if r == '"' {
+					return &terminal{common, reader.Slice(initPos)}, nil
+				}
+			case inCodeBlock:
+				// look back
+				if err == io.EOF {
+					state = inTerminal
+					reader.SetPos(initPos)
+					stack.Clear()
+					continue
+				}
+
 				if r == '{' {
-					pStack.Push(r)
+					stack.Push(r)
 				} else if r == '}' {
-					pStack.Pop()
-					if pStack.Empty() {
-						break
+					stack.Pop()
+					if stack.Empty() {
+						return &CodeBlock{common,
+							string(reader.Runes[initPos+1:reader.Pos-1])}, nil
 					}
+				} else if r == '\'' || r== '"' {
+					stack.Push(r)
+					state = inCodeBlockStr
+			    }
+			case inCodeBlockStr:
+				if err == io.EOF {
+					state = inTerminal
+					reader.SetPos(initPos)
+					stack.Clear()
+					continue
 				}
-				continue
-			}
 
-			// enter comment
-			if !q.isInComment() {
-				if last == '/' && r == '*' {
-					q.tryToggle(inComment)
-				}
-			}
-
-			if (unicode.IsSpace(r) || r == '|' || isSpecialRune(r) ||
-				(r == ':' && !reader.PeekEqual('='))) && !q.isInSome() {
-				reader.UnreadRune()
-				break
-			}
-
-			stringBuf += string(r)
-			if !q.isInComment() {
-				// Handle end str.
-				if r == '\'' || r == '"' {
-					// identifier can not have ' or "
-					if !q.isInsideStr() {
-						return nil, fmt.Errorf("unexpected character: `%s` in `%s`", string(r), stringBuf)
+				if p, ok := stack.Peek(); ok {
+					if r == p.(rune) && !reader.LastEqual('\\') {
+						stack.Pop()
+						state = inCodeBlock
 					}
-					if q.tryToggle(getByQuote(r)) {
-						break
-					}
-				}
-			} else {
-				// in comment
-				if r == '\n' && q.isInOneLineComment() {
-					q.tryToggle(inOneLineComment)
-					return &comment{stringBuf}, nil
-				}
-				if last == '*' && r == '/' && q.isInComment() {
-					q.tryToggle(inComment)
-					return &comment{stringBuf}, nil
+				} else {
+					return nil, errors.New("impossible code path")
 				}
 			}
 		}
-
-		// CodeBlock
-		if strings.HasPrefix(stringBuf, "{") {
-			return &CodeBlock{common, stringBuf[1: len(stringBuf) - 1]}, nil
-		}
-
-		// stringLiteral
-		if strings.HasPrefix(stringBuf, "'") || strings.HasPrefix(stringBuf, "\"") {
-			return &terminal{common, stringBuf}, nil
-		}
-
-		// keyword
-		if strings.HasPrefix(stringBuf, "_") {
-			return &keyword{common, stringBuf}, nil
-		}
-
-		// nonTerminal
-		if isNonTerminal(stringBuf) {
-			return &nonTerminal{common, stringBuf}, nil
-		}
-
-		// terminal
-		return &terminal{common, stringBuf}, nil
 	}
 }
 

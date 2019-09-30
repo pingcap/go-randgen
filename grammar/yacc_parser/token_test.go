@@ -87,6 +87,32 @@ t1: c | o | p
 			[]string{"i=1\nf1={a = 1, b = 2}\nf2={a = 2, b = 3}\narr={4, 6, 'undef'}\n",
 				"t1", ":", "c", "|", "o", "|", "p"},
 		},
+		{
+			`aasf " oo lp '`,
+			[]string{"aasf", "\"", "oo", "lp", "'"},
+		},
+		{
+			`
+quote:
+   "
+
+test:
+   quote '' ' quote "
+`,
+			[]string{"quote", ":", "\"", "test", ":", "quote", "''", "'", "quote", "\""},
+		},
+		{
+			`{print("{")} m {print("}")}`,
+			[]string{`print("{")`, `m`, `print("}")`},
+		},
+		{
+			`{print("\"{");print('\'}')}llll`,
+			[]string{`print("\"{");print('\'}')`, `llll`},
+		},
+		{
+			`{print('"')}select{print('"')}`,
+			[]string{`print('"')`, `select`, `print('"')`},
+		},
 	}
 
 	for _, originAndExpec := range originAndExpecs {
@@ -102,7 +128,7 @@ func assertExpectedTokenResult(t *testing.T, origin string, expected []string) {
 }
 
 func withTokenizeResult(t *testing.T, origin string, visitor func(index int, tkn string)) {
-	next := Tokenize(&RuneSeq{Runes:[]rune(origin)})
+	next := Tokenize(&RuneSeq{Runes: []rune(origin)})
 	for i := 0; ; i++ {
 		tkn, err := next()
 		assert.Equal(t, nil, err)
@@ -131,9 +157,11 @@ func TestRuneSeq(t *testing.T) {
 
 func TestSimpleTokenPrint(t *testing.T) {
 	t.SkipNow()
-	origin := `1 23 4`
+	origin := `
+{print('"')}select{print('"')}
+`
 
-	next := Tokenize(&RuneSeq{Runes:[]rune(origin)})
+	next := Tokenize(&RuneSeq{Runes: []rune(origin)})
 	for {
 		tkn, err := next()
 		assert.Equal(t, nil, err)

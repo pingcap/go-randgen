@@ -11,7 +11,7 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mattn/go-isatty v0.0.9 // indirect
 	github.com/pingcap/errors v0.11.4
-	github.com/pkg/errors v0.8.1 // indirect
+	github.com/pkg/errors v0.8.1
 	github.com/sergi/go-diff v1.0.0
 	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.2.2
