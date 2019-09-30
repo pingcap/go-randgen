@@ -241,8 +241,6 @@ func tknEnd(reader *RuneSeq, r rune) bool {
 }
 
 // Tokenize is used to wrap a reader into a Token producer.
-// simple lexer not look back, have some problem when quote not pair
-// runeScanner must support unread twice
 func Tokenize(reader *RuneSeq) func() (Token, error) {
 	stack := arraystack.New()
 	return func() (Token, error) {
@@ -275,6 +273,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 
 		initPos := reader.Pos - 1
 
+		// state machine
 		for {
 			r, err = reader.ReadRune()
 			if err != nil && err != io.EOF {

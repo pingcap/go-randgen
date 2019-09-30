@@ -146,7 +146,10 @@ func execAction(cmd *cobra.Command, args []string) {
 
 		log.Println("generating data ok")
 	} else {
-		keyf = gendata.NewKeyfun(nil, nil)
+		keyf, err = gendata.ByDb(db1)
+		if err != nil {
+			log.Fatalf("Fatal Error: %v\n", err)
+		}
 		log.Println("skip generate data")
 	}
 

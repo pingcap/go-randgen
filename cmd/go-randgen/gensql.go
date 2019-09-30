@@ -47,7 +47,7 @@ func gensqlAction(cmd *cobra.Command, args []string) {
 	log.Println("Cache database meta info...")
 	keyf, err := gendata.ByDb(db)
 	if err != nil {
-		log.Fatalf("%v\n", err)
+		log.Fatalf("Fatal Error: %v\n", err)
 	}
 	log.Println("Cache database meta info ok, start generate sqls by yy")
 

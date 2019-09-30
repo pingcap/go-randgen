@@ -65,4 +65,5 @@ func init() {
 	gmap["int_usigned"] = &Uint{}
 	gmap["integer"] = newInt(0, -1, "")
 	gmap["decimal"] = &Decimal{}
+
 }
