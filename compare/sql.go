@@ -12,7 +12,7 @@ import (
 
 // OpenDBWithRetry opens a database specified by its database driver name and a
 // driver-specific Data source name. And it will do some retries if the connection fails.
-
+// variablize for mock conveniently
 var OpenDBWithRetry = func(driverName, dataSourceName string) (mdb *sql.DB, err error){
 	startTime := time.Now()
 	sleepTime := time.Millisecond * 500

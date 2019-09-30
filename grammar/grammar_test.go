@@ -135,9 +135,22 @@ query:
 				}
 			}
 		})
-
 	}
 
+}
+
+func TestMaxRetry(t *testing.T) {
+	recurYy := `
+query:
+   select
+
+select:
+   SELECT select
+`
+	_, err := ByYy(recurYy, 10, "query", 5, nil, false)
+	assert.Equal(t,
+		"next retry num exceed 10, `select` expression recursive num exceed max loop back 5\n [query select select select select select]",
+		err.Error())
 }
 
 const yy = `

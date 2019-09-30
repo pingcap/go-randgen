@@ -115,7 +115,9 @@ func (t *Tables) gen() ([]*tableStmt, error) {
 }
 
 type tableStmt struct {
+	// create statement without field part
 	format string
+	// table name
 	name string
 	rowNum int
 	// generate by wrapInTable

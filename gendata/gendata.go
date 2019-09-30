@@ -2,6 +2,7 @@ package gendata
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"github.com/dqinyuan/go-randgen/gendata/generators"
 	"github.com/dqinyuan/go-randgen/resource"
@@ -100,6 +101,51 @@ func ByConfig(config *ZzConfig) ([]string, Keyfun, error) {
 	}
 
 	return sqls, NewKeyfun(tableStmts, fieldExecs), nil
+}
+
+// generate keyfun by db, it assumes all tables have the same fields
+func ByDb(db *sql.DB) (Keyfun, error) {
+	rows, err := db.Query("show tables")
+	if err != nil {
+		return nil, err
+	}
+
+	tableStmts := make([]*tableStmt, 0)
+
+	for rows.Next() {
+		var tableName string
+		err := rows.Scan(&tableName)
+		if err != nil {
+			return nil, err
+		}
+		tableStmts = append(tableStmts, &tableStmt{name:tableName})
+	}
+	rows.Close()
+
+	fieldExecs := make([]*fieldExec, 0)
+
+	if len(tableStmts) > 0 {
+		rows, err := db.Query(fmt.Sprintf("desc %s", tableStmts[0].name))
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var fieldName, fieldType string
+
+			err = rows.Scan(&fieldName, &fieldType,
+				&sql.RawBytes{}, &sql.RawBytes{},
+				&sql.RawBytes{}, &sql.RawBytes{})
+			if err != nil {
+				return nil, err
+			}
+
+			fieldExecs = append(fieldExecs, &fieldExec{name:fieldName, tp:fieldType})
+		}
+
+	}
+
+	return NewKeyfun(tableStmts, fieldExecs), nil
 }
 
 const insertTemp = "insert into %s values %s"

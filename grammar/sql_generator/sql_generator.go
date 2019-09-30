@@ -47,12 +47,16 @@ func (ln *literalNode) loopbackDetection(productionName string, sameParent uint)
 }
 
 // SQLIterator is a iterator interface of sql generator
+// SQLIterator is not thread safe
 type SQLIterator interface {
 	// HasNext returns whether the iterator exists next sql case
 	HasNext() bool
 
 	// Next returns next sql case in iterator
 	Next() (string, error)
+
+	// Next returns next sql case in iterator With 10 times retry
+	NextWithRetry() (string, error)
 }
 
 func initProductionMap(productions []yacc_parser.Production) map[string]yacc_parser.Production {
@@ -71,6 +75,7 @@ func initProductionMap(productions []yacc_parser.Production) map[string]yacc_par
 }
 
 // SQLRandomlyIterator is a iterator of sql generator
+// note that it is not thread safe
 type SQLRandomlyIterator struct {
 	productionName string
 	productionMap  map[string]yacc_parser.Production
@@ -111,6 +116,30 @@ func (i *SQLRandomlyIterator) Next() (string, error) {
 		return "", nil
 	}
 }
+
+const maxRetry = 10
+
+func (i *SQLRandomlyIterator) NextWithRetry() (string, error) {
+	counter := 0
+
+	for {
+		sql, err := i.Next()
+		if err != nil{
+			counter++
+			if counter > maxRetry {
+				return "", fmt.Errorf("next retry num exceed %d, %v", maxRetry, err)
+			}
+			continue
+		}
+
+		if i.debug {
+			log.Println(sql)
+		}
+
+		return sql, nil
+	}
+}
+
 
 func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 	return func(state *lua.LState) int {

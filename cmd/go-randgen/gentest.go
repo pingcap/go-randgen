@@ -6,13 +6,13 @@ import (
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
+	"math"
 	"os"
 	"strings"
 )
 
 var format bool
 var breake bool
-var outPath string
 
 func newGentestCmd() *cobra.Command {
 	gentestCmd := &cobra.Command{
@@ -23,6 +23,14 @@ func newGentestCmd() *cobra.Command {
 				return errors.New("yy are required")
 			}
 
+			if queries < 0 {
+				return errors.New("queries num must be positive or zero")
+			}
+
+			if maxRecursive <= 0 {
+				maxRecursive = math.MaxInt32
+			}
+
 			return nil
 		},
 		Run: gentestAction,
@@ -31,8 +39,6 @@ func newGentestCmd() *cobra.Command {
 		"generate sql that is convenient for reading(not implement yet)")
 	gentestCmd.Flags().BoolVarP(&breake, "break", "B", false,
 		"break zz yy result to two resource")
-	gentestCmd.Flags().StringVarP(&outPath, "output", "O","output",
-		"sql output file path")
 
 	return gentestCmd
 }
@@ -60,11 +66,7 @@ func gentestAction(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		err := ioutil.WriteFile(outPath+".rand.sql",
-			[]byte(strings.Join(randomSqls, ";\n") + ";"), os.ModePerm)
-		if err != nil {
-			log.Printf("write random sql in dist fail, %v\n", err)
-		}
+		dumpRandSqls(randomSqls)
 	} else {
 		allSqls := make([]string, 0)
 		allSqls = append(allSqls, ddls...)
