@@ -104,7 +104,8 @@ func (c *CodeBlock) ToString() string {
 }
 
 const (
-	inSingQuoteStr = iota
+	tknInit = iota
+	inSingQuoteStr
 	inDoubleQuoteStr
 	inOneLineComment
 	inComment
@@ -115,64 +116,7 @@ const (
 	inTerminal
 )
 
-var stateMap = map[rune]int{
-	'\'': inSingQuoteStr,
-	'"': inDoubleQuoteStr,
-	'#': inOneLineComment,
-	'{': inCodeBlock,
-	'_': inKeyWord,
-}
 
-func runeInitState(r rune) int {
-	if s, ok := stateMap[r]; ok {
-		return s
-	}
-
-	if unicode.IsLower(r) {
-		return inNonTerminal
-	}
-
-	return inTerminal
-}
-
-
-func getByQuote(r rune) int {
-	if r == '"' {
-		return inDoubleQuoteStr
-	}
-	return inSingQuoteStr
-}
-
-type quote struct {
-	c int
-}
-
-func (q *quote) isInsideStr() bool {
-	return q.c == inSingQuoteStr || q.c == inDoubleQuoteStr
-}
-
-func (q *quote) isInComment() bool {
-	return q.c == inOneLineComment || q.c == inComment
-}
-
-func (q *quote) isInOneLineComment() bool {
-	return q.c == inOneLineComment
-}
-
-func (q *quote) isInSome() bool {
-	return q.c != 0
-}
-
-func (q *quote) tryToggle(other int) bool {
-	if q.c == 0 {
-		q.c = other
-		return true
-	} else if q.c == other {
-		q.c = 0
-		return true
-	}
-	return false
-}
 
 func skipSpace(reader *RuneSeq) (hasSpace bool, r rune, err error) {
 	for {
@@ -240,48 +184,92 @@ func tknEnd(reader *RuneSeq, r rune) bool {
 		(r == ':' && !reader.PeekEqual('=')) || (r == '/' && reader.PeekEqual('*'))
 }
 
+var stateMap = map[rune]int{
+	'\'': inSingQuoteStr,
+	'"': inDoubleQuoteStr,
+	'#': inOneLineComment,
+	'{': inCodeBlock,
+	'_': inKeyWord,
+}
+
+func runeInitState(r rune) int {
+	if s, ok := stateMap[r]; ok {
+		return s
+	}
+
+	if unicode.IsLower(r) {
+		return inNonTerminal
+	}
+
+	return inTerminal
+}
+
 // Tokenize is used to wrap a reader into a Token producer.
 func Tokenize(reader *RuneSeq) func() (Token, error) {
 	stack := arraystack.New()
 	return func() (Token, error) {
-		var r rune
-		var err error
-		// Skip spaces.
-		hasSpace, r, err := skipSpace(reader)
-		if err == io.EOF {
-			return &eof{}, nil
-		} else if err != nil {
-			return nil, err
-		}
 
-		common := commonAttr{hasPreSpace:hasSpace}
+		common := commonAttr{hasPreSpace:false}
 
-		// Handle delimiter.
-		if (r == ':' && !reader.PeekEqual('=')) || r == '|' {
-			return &operator{string(r)}, nil
-		}
+		state := tknInit
 
-		// handle special rune
-		if isSpecialRune(r) {
-			return &terminal{common,string(r)}, nil
-		}
-
-		state := runeInitState(r)
-		if state == inCodeBlock {
-			stack.Push('{')
-		}
-
-		initPos := reader.Pos - 1
+		var initPos int
 
 		// state machine
 		for {
-			r, err = reader.ReadRune()
+			r, err := reader.ReadRune()
 			if err != nil && err != io.EOF {
 				return nil, err
 			}
 
 			// all state must handle io.EOF first
 			switch state {
+			case tknInit:
+				if err == io.EOF {
+					return &eof{}, nil
+				}
+
+				// skip space
+				if unicode.IsSpace(r) {
+					common.hasPreSpace = true
+					continue
+				}
+
+				// Handle delimiter.
+				// prevent `:` operator to be conflict with sql assign oprator `:=`
+				if (r == ':' && !reader.PeekEqual('=')) || r == '|' {
+					return &operator{string(r)}, nil
+				}
+
+				// handle special rune
+				if isSpecialRune(r) {
+					return &terminal{common,string(r)}, nil
+				}
+
+				// transfer state
+				initPos = reader.Pos - 1
+				switch r {
+				case '\'':
+					state = inSingQuoteStr
+				case '"':
+					state = inDoubleQuoteStr
+				case '#':
+					state = inOneLineComment
+				case '_':
+					state = inKeyWord
+				case '{':
+					state = inCodeBlock
+					stack.Push('{')
+				default:
+					if unicode.IsLower(r) {
+						state = inNonTerminal
+					} else {
+						state = inTerminal
+					}
+				}
+
+
+
 			case inNonTerminal:
 				if err == io.EOF {
 					return &nonTerminal{common, reader.Slice(initPos)}, nil
@@ -382,6 +370,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 				}
 
 				if p, ok := stack.Peek(); ok {
+					// in consider of escaped string
 					if r == p.(rune) && !reader.LastEqual('\\') {
 						stack.Pop()
 						state = inCodeBlock
