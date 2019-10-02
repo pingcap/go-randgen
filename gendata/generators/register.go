@@ -49,7 +49,6 @@ func init() {
 	gmap["day_hour"] = newTemporal(dd, HH)
 	gmap["year_month"] = newTemporal(yyyy, MM)
 
-
 	gmap["timestamp"] = &Timestamp{}
 	gmap["english"] = newEnglish()
 	gmap["char"] = NewChar(10)
@@ -61,6 +60,8 @@ func init() {
 	gmap["smallint_unsigned"] = newInt(0, 65535, "")
 	gmap["mediumint"] = newInt(-8388608, 8388607, "")
 	gmap["mediumint_unsigned"] = newInt(0, 16777215, "")
+	gmap["bigint"] = newBigInt(false)
+	gmap["bigint_unsigned"] = newBigInt(true)
 	gmap["int"] = newInt(0, -1, "")
 	gmap["int_usigned"] = &Uint{}
 	gmap["integer"] = newInt(0, -1, "")

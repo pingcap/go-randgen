@@ -445,7 +445,7 @@ const_char_value:
 ;
 
 value:
-   _int | _smallint | _int_usigned | _letter | _english | _datetime | _date | _time | NULL ;
+   _int | _bigint | _smallint | _int_usigned | _letter | _english | _datetime | _date | _time | NULL ;
 
 bool_value:
    TRUE | FALSE | UNKNOWN | NULL ;

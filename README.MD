@@ -32,7 +32,7 @@ make all
 ## 特色
 
  1. 内置一个默认zz文件，也就是说你只给一个yy文件，就能自动生成sql
- 2. 生成sql的过程中不需要连接数据库，非常迅速
+ 2. 生成sql的过程中可以不连接数据库，非常迅速
  3. 兼容mysql randgen的yy文件的语法，只要在yy文件中没有插入perl代码，就可以直接拿过来运行
  4. 和mysql randgen支持嵌入perl代码类似，go randgen支持嵌入lua代码
  5. 纯Go实现，设计得非常灵活，非常易于Hack
@@ -40,9 +40,8 @@ make all
 
 ## Quick start
 
-### 命令行工具
 
-randgen根据用户指定的zz文件初始化数据库（建表与插入数据），yy文件来随机生成sql。
+### gentest
 
 生成测试window functions的sql：
 
@@ -60,64 +59,37 @@ randgen根据用户指定的zz文件初始化数据库（建表与插入数据�
 上述案例使用的是系统[默认的zz文件](resource/resource/default.zz.lua)，也可以自己重新写
 ，然后通过`-Z`参数指定路径，具体规则见语法手册。
 
-和randgen细节上的不同：
- 1. 支持单行注释#，以及多行注释/* ... */
- 2. 全部以`query`作为根规则（mysql randgen在生成第一条语句时会使用`query_init`作为根规则）
- 3. bnf表达式的结尾不需要加分号，当然，如果你加了也不会出错，因为我们兼容mysql randgen，会自动作处理，忽略它
+yy文件的具体写法也见后面的语法手册
+
+### exec
+
+
+
+### gendata
+
+### gensql
+
+
+
 
 ### 作为一个库
 
 除了cmd目录下的包，其他所有包对外暴露的函数的实现都是无状态的，可以很安全地作为
-一个库被反复调用。
-
-示例：把go-randgen作为一个库生成ddl的示例：
-
-```go
-package test
-
-import (
-	"fmt"
-	"github.com/dqinyuan/go-randgen/gendata"
-	"github.com/stretchr/testify/assert"
-	"testing"
-)
-
-func TestByZz(t *testing.T)  {
-	// 使用built-in的zz, 也可以选择自己传一个zz文本进去,zz的写法参考后面的语法手册
-	ddls, keyf, err := gendata.ByZz("")
-	assert.Equal(t, nil, err)
-
-	// ddls是全部的用于生成表结构和插入数据的sql
-	fmt.Println(len(ddls))
-
-	// 随机得到一张表
-	if table, err := keyf["_table"](); err == nil {
-		fmt.Println(table)
-	}
-
-	// 随机得到一个字段
-	if field, err := keyf["_field"](); err == nil {
-		fmt.Println(field)
-	}
-
-	// 随机得到一个整型字段
-	if fieldInt, err := keyf["_field_int"](); err == nil {
-		fmt.Println(fieldInt)
-	}
-
-    // 随机得到一个char或varchar类型字段
-	if fieldChar, err := keyf["_field_char"](); err == nil {
-		fmt.Println(fieldChar)
-	}
-
-}
-```
+一个库被反复调用。至于使用的方法，可以参考cmd包下相关命令的实现。
 
 ## 语法手册
 
 ### zz文件
 
-zz文件定义数据库的初始化状态，其本身是一个lua脚本文件，以默认的zz文件为例：
+#### 快速入门
+
+zz文件是一个lua脚本,zz文件会定义三件事情:
+
+ 1. 生成哪些表
+ 2. 表中哪些字段
+ 3. 字段中有哪些数据
+ 
+以内置的zz文件为例：
 
 ```lua
 -- 表相关定义
@@ -151,8 +123,27 @@ data = {
 }
 ```
 
-其中表的属性会被求全组合，每种组合会生成一张表，表中的字段都是
-一样的，由fields配置的属性求全组合，每种组合产生一个字段
+如上所示，在zz文件中必须要有三个Table类型的变量，分别是**tables**,
+**fields**和**data**.
+
+**tables**中定义表的相关属性，比如示例中的`rows`,`charsets`和`partitions`
+（更多的可定义属性见下面的语法手册），这些属性会被求全组合，每种组合生成一张表，
+所以示例中的tables定义共会生成4(rows)*3(charsets)*3(partitions)=36张表
+
+**fields**定义表中的字段信息，这些信息同样会被求全组合，每种组合生成一个字段，
+但是上面的示例中生成的字段数目会少于6(types)*2(sign)=12个，因为sign属性只能
+作用在数字类型的字段上面，对于非数字类型，go-randgen会自动忽略该属性，
+所以示例中的配置总计生成的字段数为4(number)*2(sign)+2(char)=10个
+，注意randgen生成的所有表中的字段都是一样的
+
+**data**定义表中的数据，其中key代表字段类型
+（具体可定义的字段类型见下面的语法手册）
+，value是一个数组，代表该类型字段的
+可选值，每生成一条记录，遇到key类型的字段时会从value随机选择一个作为该条记录的值
+，可选值可以是"字面量"或者"生成器"，比如上面示例中对于`numbers`的定义，`null`,
+`12.991`等就是字面量，会直接将其作为一个值，而像`tinyint`就是一个生成器，
+如果选到它的话，它会从`-128~127`中随机选择一个值生成（具体有哪些生成器见下面的
+语法手册）
 
 #### tables
 
@@ -200,6 +191,39 @@ go randgen中支持的所有数据生成规则见[链接](gendata/generators/reg
 
 ### yy文件
 
+#### 快速入门
+
+一个简单的示例：
+
+```yacc
+
+# 单行注释
+/*
+多行注释
+*/
+
+query:
+    select
+    | select1
+
+select:
+    SELECT fields FROM _table
+    
+fields:
+    _field
+    | _field_int
+```
+
+他的一次生成结果可能如下：
+
+```sql
+select1
+SELECT 随机的一个字段 FROM 随机的一张表
+SELECT 随机的一个整型字段 FROM 随机的一张表
+select1
+```
+
+
 #### 注释
 
  - 单行注释`#`
@@ -207,7 +231,7 @@ go randgen中支持的所有数据生成规则见[链接](gendata/generators/reg
 
 #### 标识符的分类
 
- - 非终结符：由小写字母或者下划线组成
+ - 非终结符：由小写字母,数字或者下划线组成，但是不能以数字开头
  - 终结符：大写字母，特殊字符或者数字组成，但是不能以下划线开头
  - 关键字：下划线开头
 
@@ -247,6 +271,15 @@ query:{a = 1}
 ```
 
 以上代码始终生成sql为`CREATE TABLE t1 (a INT)`
+
+在代码块中可以调用lua标准库中的任意函数，比如：
+
+```
+# 每次随机生成10-20的随机数
+query:
+    {print(math.random(10,20))}
+```
+
 
 正常的代码块会在每次分支被运行到的时候执行一遍。
 
