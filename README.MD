@@ -248,9 +248,8 @@ data = {
 
 其中'null', 'tinyint', 'smallint', 'decimal'都是go randgen自带的数据生成规则。
 
-go randgen中支持的所有数据生成规则见[链接](gendata/generators/register.go)
-
-日后再整理文档
+go randgen中支持的所有数据生成规则见
+[链接中的init函数](gendata/generators/register.go)
 
 ### yy文件
 
@@ -323,7 +322,8 @@ select1
  - `_datetime`: 随机生成一个`yyyy-MM-dd hh:mm:ss`的随机时间
 
 
-没有写全，代码位于[链接](/gendata/gendata.go)的底部，可以自行查看，日后有空再补全
+没有写全，代码位于[链接中的NewKeyfun方法](/gendata/gendata.go)，
+可以自行查看
 
 #### 嵌入lua代码
 
