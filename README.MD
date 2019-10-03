@@ -428,7 +428,7 @@ query:
     create
     
 create:
-    create table t (a int); drop table t
+    CREATE TABLE t (a int); DROP TABLE t
 ```
 
 生成结果：
