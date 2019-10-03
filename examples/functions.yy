@@ -2,19 +2,30 @@
 
 query:
     select_or_explain_select
-  #| select_or_explain_select
-  #| select_or_explain_select
-  #| select_or_explain_select
-  #| select_or_explain_select
-  #| select_or_explain_select
-  #| prepare_execute
+  | select_or_explain_select
+  | select_or_explain_select
+  | select_or_explain_select
+  | select_or_explain_select
+  | select_or_explain_select
+  | prepare_execute
 ;
 
 prepare_execute:
-	SET @stmt = {print('"')}select{print('"')}; SET @stmt_create = CONCAT("CREATE TABLE `ps` AS ", @stmt );
-	PREPARE stmt FROM @stmt_create ; EXECUTE stmt ;
-	SET @stmt_ins = CONCAT("INSERT INTO `ps` ", @stmt) ;
-	PREPARE stmt FROM @stmt_ins; EXECUTE stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt; DROP TABLE `ps`;
+    # tidb not support `CREATE ... AS ...`
+	# SET @stmt = {print('"')}select{print('"')};
+	# SET @stmt_create = CONCAT("CREATE TABLE `ps` AS ", @stmt );
+	# SET @stmt_ins = CONCAT("INSERT INTO `ps` ", @stmt) ;
+	# PREPARE stmt FROM @stmt_ins; EXECUTE stmt; EXECUTE stmt; DEALLOCATE PREPARE stmt; DROP TABLE `ps`;
+
+	SET @stmt_create = "CREATE TABLE `ps` (p int, s varchar(5))";
+    PREPARE stmt FROM @stmt_create ; EXECUTE stmt ;
+	SET @stmt_ins = "INSERT INTO `ps` VALUES(?, ?)";
+	PREPARE stmt FROM @stmt_ins;
+	SET @a = 1; SET @b = "aaa";
+	SET @c = 2; SET @d = "bbb";
+	EXECUTE stmt USING @a, @b;
+	EXECUTE stmt USING @c, @d;
+	DEALLOCATE PREPARE stmt; DROP TABLE `ps`;
 
 temporary:
    #| TEMPORARY ; # https://github.com/pingcap/tidb/issues/1248

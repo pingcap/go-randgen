@@ -127,9 +127,12 @@ func getIter(keyf gendata.Keyfun) sql_generator.SQLIterator {
 }
 
 func dumpRandSqls(sqls []string) {
-	err := ioutil.WriteFile(outPath+".rand.sql",
+	path := outPath+".rand.sql"
+	err := ioutil.WriteFile(path,
 		[]byte(strings.Join(sqls, ";\n") + ";"), os.ModePerm)
 	if err != nil {
 		log.Printf("write random sql in dist fail, %v\n", err)
 	}
+
+	log.Printf("dump random sqls in %s ok\n", path)
 }

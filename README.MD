@@ -59,18 +59,81 @@ make all
 上述案例使用的是系统[默认的zz文件](resource/resource/default.zz.lua)，也可以自己重新写
 ，然后通过`-Z`参数指定路径，具体规则见语法手册。
 
+如果你不想生成ddl，只想根据yy生成一些sql，
+可以使用`--skip-zz`跳过ddl的生成，
+不过此时也不允许在yy文件中包含表名或者字段相关的关键字。
+
 yy文件的具体写法也见后面的语法手册
-
-### exec
-
-
 
 ### gendata
 
+根据指定的zz，往指定的dsn中灌入相应数据
+
+```bash
+# 在指定的dsn中灌入内置zz文件定义的数据
+./go-randgen gendata --dsn "root:@tcp(127.0.0.1:3306)/randgen"
+```
+
 ### gensql
 
+根据指定的dsn，解析yy文件生成sql：
 
+```bash
+./go-randgen gensql -Y examples/functions.yy \  
+             --dsn "root:@tcp(127.0.0.1:3306)/randgen" \ 
+             -Q 100
+```
 
+注意`gensql`会假设dsn中所有表的字段及类型都是一样的（因为randgen生成的数据有这个特点）
+
+### exec
+
+指定两个dsn，直接将生成的sql在两个dsn上执行，并dump出运行结果不一致的sql
+
+示例：
+
+```bash
+./go-randgen exec -Y examples/functions.yy \
+             --dsn1 "root:@tcp(127.0.0.1:4000)/randgen" \
+             --dsn2 "root:@tcp(127.0.0.1:3306)/randgen" \  
+             -Q 100
+```
+
+分别在两个dsn中先通过内置的zz生成数据，然后通过functions.yy中定义的规则随机生成100条sql，
+在两个dsn中同时执行，然后对比执行结果是否一致，如果不一致，
+则把相关信息输出到程序执行目录的`dump`目录下
+（可以通过`--dump`选项修改dump目录）
+
+如果你想让go-randgen一直运行下去，而不是执行有限条sql后停止，
+可以将`-Q`设置为负数，比如`-Q -1`.
+
+注意，默认情况下，对比两个sql的执行结果是无序的，比如下面两个运行结果，
+go randgen会认为他们是一样的：
+
+```sql
+Result1:
+
++------+------+
+| p    | s    |
++------+------+
+|    1 | aaa  |
+|    2 | bbb  |
++------+------+
+
+Result2:
+
++------+------+
+| p    | s    |
++------+------+
+|    2 | bbb  |
+|    1 | aaa  |
++------+------+
+```
+
+如果想要精确到byte的有序比较的话，可以添加`--order`选项
+
+`exec`也可以通过`--skip-zz`选项跳过数据生成的过程，此时它会采用
+类似于`gensql`的方式生成sql并执行
 
 ### 作为一个库
 

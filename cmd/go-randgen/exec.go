@@ -18,7 +18,7 @@ import (
 
 var dsn1 string
 var dsn2 string
-var nonOrder bool
+var order bool
 var dumpDir string
 
 func newExecCmd() *cobra.Command {
@@ -44,8 +44,8 @@ func newExecCmd() *cobra.Command {
 
 	execCmd.Flags().StringVar(&dsn1, "dsn1", "", "one of compare mysql dsn")
 	execCmd.Flags().StringVar(&dsn2, "dsn2", "", "another compare mysql dsn")
-	execCmd.Flags().BoolVar(&nonOrder, "non-order",
-		true, "compare sql result without order")
+	execCmd.Flags().BoolVar(&order, "order",
+		false, "compare sql result without order")
 	execCmd.Flags().StringVar(&dumpDir, "dump",
 		"dump", "inconsistent sqls dump directory")
 
@@ -118,6 +118,7 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 }
 
 func execAction(cmd *cobra.Command, args []string) {
+	fmt.Println(order)
 	db1, err := compare.OpenDBWithRetry("mysql", dsn1)
 	if err != nil {
 		log.Fatalf("connect dsn1 %s error %v\n", dsn1, err)
@@ -168,7 +169,7 @@ func execAction(cmd *cobra.Command, args []string) {
 
 	if queries >= 0 {
 		randSqls := getRandSqls(keyf)
-		err = compare.ByDb(randSqls, db1, db2, nonOrder, visitor)
+		err = compare.ByDb(randSqls, db1, db2, !order, visitor)
 
 		if err != nil {
 			log.Fatalf("Fatal Error: dump fail  %v\n", err)
@@ -182,7 +183,7 @@ func execAction(cmd *cobra.Command, args []string) {
 				log.Fatalf("Fatal Error: %v \n", err)
 			}
 
-			consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, nonOrder)
+			consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
 			if !consistent {
 				visitor(sql, dsn1Res, dsn2Res)
 			}

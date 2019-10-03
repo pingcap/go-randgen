@@ -53,6 +53,4 @@ func gensqlAction(cmd *cobra.Command, args []string) {
 
 	randSqls := getRandSqls(keyf)
 	dumpRandSqls(randSqls)
-
-	log.Println("dump random sqls ok")
 }
