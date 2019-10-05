@@ -75,7 +75,7 @@ generate table structrue and data in user specified dsn
 according to user specified or built-in zz file.
 
 ```bash
-# 在指定的dsn中灌入内置zz文件定义的数据
+# generate table structure and data specified by zz in specified dsn
 ./go-randgen gendata --dsn "root:@tcp(127.0.0.1:3306)/randgen"
 ```
 
@@ -382,7 +382,7 @@ Above example will always generate sql `CREATE TABLE t1 (a INT)`.
 You can call any funcation in lua standard library, for example:
 
 ```
-# 每次随机生成10-20的随机数
+# random number from 10-20
 query:
     {print(math.random(10,20))}
 ```
