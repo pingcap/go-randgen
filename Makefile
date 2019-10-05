@@ -1,5 +1,5 @@
 
-all:resource bin
+all:resource test bin
 
 resource:
 	go generate ./resource
