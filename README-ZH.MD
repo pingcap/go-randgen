@@ -507,10 +507,10 @@ create:
 生成结果：
 
 ```
-create table t (a int); 
-drop table t;
-create table t (a int); 
-drop table t;
+CREATE TABLE t (a int);
+DROP TABLE t;
+CREATE TABLE t (a int);
+DROP TABLE t;
 ...
 ```
 
