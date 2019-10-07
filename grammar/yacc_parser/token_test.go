@@ -176,7 +176,7 @@ func TestRuneSeq(t *testing.T) {
 }
 
 func TestSimpleTokenPrint(t *testing.T) {
-	//t.SkipNow()
+	t.SkipNow()
 	origin := `
 {
 -- {
