@@ -113,6 +113,26 @@ test:
 			`{print('"')}select{print('"')}`,
 			[]string{`print('"')`, `select`, `print('"')`},
 		},
+		{
+			`dsd /* dd ttee `,
+			[]string{"dsd", "/*", "dd", "ttee"},
+		},
+		{
+			`dsd { { dd ttee `,
+			[]string{"dsd", "{", "{", "dd", "ttee"},
+		},
+		{
+			`
+{
+-- {
+--[==[
+}
+]==]
+asd
+}
+`,
+			[]string{"\n-- {\n--[==[\n}\n]==]\nasd\n"},
+		},
 	}
 
 	for _, originAndExpec := range originAndExpecs {
@@ -156,9 +176,15 @@ func TestRuneSeq(t *testing.T) {
 }
 
 func TestSimpleTokenPrint(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	origin := `
-{print('"')}select{print('"')}
+{
+-- {
+--[==[
+}
+]==]
+asd
+}
 `
 
 	next := Tokenize(&RuneSeq{Runes: []rune(origin)})

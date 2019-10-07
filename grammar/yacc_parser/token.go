@@ -110,28 +110,15 @@ const (
 	inOneLineComment
 	inComment
 	inCodeBlock
-	inCodeBlockStr
+	inCodeBlockStr                // in lua string
+	inCodeBlockSingleLineComment  // in lua single line comment
+	prepareCodeBlockMultiLineComment
+	inCodeBlockMultiLineComment  // in lua multiline comment
+	endCodeBlockMultiLineComment
 	inKeyWord
 	inNonTerminal
 	inTerminal
 )
-
-
-
-func skipSpace(reader *RuneSeq) (hasSpace bool, r rune, err error) {
-	for {
-		r, err = reader.ReadRune()
-		if err != nil {
-			return false, 0, err
-		}
-
-		if !unicode.IsSpace(r) {
-			return hasSpace, r, nil
-		} else {
-			hasSpace = true
-		}
-	}
-}
 
 type RuneSeq struct {
 	Runes []rune
@@ -153,7 +140,7 @@ func (r *RuneSeq) UnreadRune() {
 	r.Pos--
 }
 
-func (r *RuneSeq) SetPos(newPos int)  {
+func (r *RuneSeq) SetPos(newPos int) {
 	r.Pos = newPos
 }
 
@@ -186,10 +173,10 @@ func tknEnd(reader *RuneSeq, r rune) bool {
 
 var stateMap = map[rune]int{
 	'\'': inSingQuoteStr,
-	'"': inDoubleQuoteStr,
-	'#': inOneLineComment,
-	'{': inCodeBlock,
-	'_': inKeyWord,
+	'"':  inDoubleQuoteStr,
+	'#':  inOneLineComment,
+	'{':  inCodeBlock,
+	'_':  inKeyWord,
 }
 
 func runeInitState(r rune) int {
@@ -209,11 +196,16 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 	stack := arraystack.New()
 	return func() (Token, error) {
 
-		common := commonAttr{hasPreSpace:false}
+		common := commonAttr{hasPreSpace: false}
 
 		state := tknInit
 
-		var initPos int
+		var lookBackPos int
+		// variable to analyze lua multiline comments
+		var luaCommentDepth int
+		var endLuaCommentDepCounter int
+
+		lastState := state
 
 		// state machine
 		for {
@@ -221,6 +213,8 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 			if err != nil && err != io.EOF {
 				return nil, err
 			}
+
+			stateCopy := state
 
 			// all state must handle io.EOF first
 			switch state {
@@ -243,11 +237,11 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 
 				// handle special rune
 				if isSpecialRune(r) {
-					return &terminal{common,string(r)}, nil
+					return &terminal{common, string(r)}, nil
 				}
 
 				// transfer state
-				initPos = reader.Pos - 1
+				lookBackPos = reader.Pos - 1
 				switch r {
 				case '\'':
 					state = inSingQuoteStr
@@ -268,15 +262,13 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 					}
 				}
 
-
-
 			case inNonTerminal:
 				if err == io.EOF {
-					return &nonTerminal{common, reader.Slice(initPos)}, nil
+					return &nonTerminal{common, reader.Slice(lookBackPos)}, nil
 				}
 				if tknEnd(reader, r) {
 					reader.UnreadRune()
-					return &nonTerminal{common, reader.Slice(initPos)}, nil
+					return &nonTerminal{common, reader.Slice(lookBackPos)}, nil
 				}
 				// nonTerminal can only be composed of lower word, digit or '_'
 				if !unicode.IsLower(r) && !unicode.IsDigit(r) && r != '_' {
@@ -285,14 +277,14 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 
 			case inTerminal:
 				if err == io.EOF {
-					return &terminal{common, reader.Slice(initPos)}, nil
+					return &terminal{common, reader.Slice(lookBackPos)}, nil
 				}
 				if tknEnd(reader, r) {
 					reader.UnreadRune()
-					return &terminal{common, reader.Slice(initPos)}, nil
+					return &terminal{common, reader.Slice(lookBackPos)}, nil
 				}
 
-				if reader.LastEqual('/') && r == '*' {
+				if lastState == tknInit && reader.LastEqual('/') && r == '*' {
 					state = inComment
 				}
 			case inKeyWord:
@@ -300,7 +292,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 					if err != io.EOF {
 						reader.UnreadRune()
 					}
-					keywordLiteral := reader.Slice(initPos)
+					keywordLiteral := reader.Slice(lookBackPos)
 					if keywordLiteral == "_" {
 						return &terminal{common, keywordLiteral}, nil
 					}
@@ -308,43 +300,45 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 				}
 			case inOneLineComment:
 				if err == io.EOF || r == '\n' {
-					return &comment{reader.Slice(initPos)}, nil
+					return &comment{reader.Slice(lookBackPos)}, nil
 				}
 			case inComment:
 				if err == io.EOF {
 					state = inTerminal
-					reader.SetPos(initPos)
+					reader.SetPos(lookBackPos+1)
 					continue
 				}
 				if reader.LastEqual('*') && r == '/' {
-					return &comment{reader.Slice(initPos)}, nil
+					return &comment{reader.Slice(lookBackPos)}, nil
 				}
 			case inSingQuoteStr:
 				// look back
 				if err == io.EOF || r == '\n' {
 					state = inTerminal
-					reader.SetPos(initPos)
+					reader.SetPos(lookBackPos+1)
 					continue
 				}
 				if r == '\'' {
-					return &terminal{common, reader.Slice(initPos)}, nil
+					return &terminal{common, reader.Slice(lookBackPos)}, nil
 				}
 
 			case inDoubleQuoteStr:
 				// look back
 				if err == io.EOF || r == '\n' {
 					state = inTerminal
-					reader.SetPos(initPos)
+					reader.SetPos(lookBackPos+1)
 					continue
 				}
 				if r == '"' {
-					return &terminal{common, reader.Slice(initPos)}, nil
+					return &terminal{common, reader.Slice(lookBackPos)}, nil
 				}
+
+			//code block related states
 			case inCodeBlock:
 				// look back
 				if err == io.EOF {
 					state = inTerminal
-					reader.SetPos(initPos)
+					reader.SetPos(lookBackPos+1)
 					stack.Clear()
 					continue
 				}
@@ -355,16 +349,19 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 					stack.Pop()
 					if stack.Empty() {
 						return &CodeBlock{common,
-							string(reader.Runes[initPos+1:reader.Pos-1])}, nil
+							string(reader.Runes[lookBackPos+1 : reader.Pos-1])}, nil
 					}
-				} else if r == '\'' || r== '"' {
+				} else if r == '\'' || r == '"' {
 					stack.Push(r)
 					state = inCodeBlockStr
-			    }
+				} else if r == '-' && reader.LastEqual('-') {
+					state = inCodeBlockSingleLineComment
+				}
+
 			case inCodeBlockStr:
 				if err == io.EOF {
 					state = inTerminal
-					reader.SetPos(initPos)
+					reader.SetPos(lookBackPos+1)
 					stack.Clear()
 					continue
 				}
@@ -378,7 +375,54 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 				} else {
 					return nil, errors.New("impossible code path")
 				}
+
+			case inCodeBlockSingleLineComment:
+				if err == io.EOF || r == '\n' {
+					state = inCodeBlock
+					continue
+				}
+
+				if lastState == inCodeBlock && r == '[' {
+					luaCommentDepth = 0
+					state = prepareCodeBlockMultiLineComment
+				}
+
+			case prepareCodeBlockMultiLineComment:
+				if err == io.EOF {
+					state = inCodeBlockSingleLineComment
+					continue
+				}
+
+				if r == '[' {
+					state = inCodeBlockMultiLineComment
+				} else if r == '=' {
+					luaCommentDepth++
+				} else {
+					state = inCodeBlockSingleLineComment
+				}
+			case inCodeBlockMultiLineComment:
+				if err == io.EOF {
+					return nil, errors.New("error at EOF, invalid multiline comment")
+				}
+
+				if r == ']' {
+					endLuaCommentDepCounter = 0
+					state = endCodeBlockMultiLineComment
+				}
+			case endCodeBlockMultiLineComment:
+				if err == io.EOF {
+					return nil, errors.New("error at EOF, invalid multiline comment")
+				}
+
+				if r == '=' {
+					endLuaCommentDepCounter++
+				} else if r == ']' && endLuaCommentDepCounter == luaCommentDepth {
+					state = inCodeBlock
+				} else {
+					state = inCodeBlockMultiLineComment
+				}
 			}
+			lastState = stateCopy
 		}
 	}
 }
@@ -393,19 +437,6 @@ var specialRune = map[rune]bool{
 func isSpecialRune(r rune) bool {
 	_, ok := specialRune[r]
 	return ok
-}
-
-func isNonTerminal(token string) bool {
-	allDigit := true
-	for _, c := range token {
-		if !unicode.IsLower(c) && !unicode.IsDigit(c) && c != '_' {
-			return false
-		}
-		if !unicode.IsDigit(c) {
-			allDigit = false
-		}
-	}
-	return !allDigit
 }
 
 func isEOF(tkn Token) bool {
@@ -438,7 +469,7 @@ func IsCodeBlock(tkn Token) bool {
 	return ok
 }
 
-func NonTerminalNotInMap(pmap map[string]Production, tkn Token) bool  {
+func NonTerminalNotInMap(pmap map[string]Production, tkn Token) bool {
 	non, ok := tkn.(*nonTerminal)
 	if !ok {
 		return false

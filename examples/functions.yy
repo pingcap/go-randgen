@@ -7,7 +7,7 @@ query:
   | select_or_explain_select
   | select_or_explain_select
   | select_or_explain_select
-  | prepare_execute
+  #| prepare_execute
 ;
 
 prepare_execute:
