@@ -12,40 +12,6 @@ import (
 	"math/rand"
 )
 
-const maxBuildTreeTime = 10 * 1000
-
-type node interface {
-	walk() bool
-	materialize(writer io.StringWriter) error
-	loopbackDetection(productionName string, sameParent uint) bool
-}
-
-type literalNode struct {
-	value string
-}
-
-func (ln *literalNode) walk() bool {
-	return true
-}
-
-func (ln *literalNode) materialize(writer io.StringWriter) error {
-	if len(ln.value) != 0 {
-		_, err := writer.WriteString(ln.value)
-		if err != nil {
-			return err
-		}
-		_, err = writer.WriteString(" ")
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (ln *literalNode) loopbackDetection(productionName string, sameParent uint) (loop bool) {
-	panic("unreachable")
-}
-
 // SQLIterator is a iterator interface of sql generator
 // SQLIterator is not thread safe
 type SQLIterator interface {
