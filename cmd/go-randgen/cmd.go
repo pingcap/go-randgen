@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/dqinyuan/go-randgen/gendata"
-	"github.com/dqinyuan/go-randgen/grammar"
-	"github.com/dqinyuan/go-randgen/grammar/sql_generator"
+	"github.com/pingcap/go-randgen/gendata"
+	"github.com/pingcap/go-randgen/grammar"
+	"github.com/pingcap/go-randgen/grammar/sql_generator"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"

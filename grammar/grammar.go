@@ -1,9 +1,9 @@
 package grammar
 
 import (
-	"github.com/dqinyuan/go-randgen/gendata"
-	"github.com/dqinyuan/go-randgen/grammar/sql_generator"
-	"github.com/dqinyuan/go-randgen/grammar/yacc_parser"
+	"github.com/pingcap/go-randgen/gendata"
+	"github.com/pingcap/go-randgen/grammar/sql_generator"
+	"github.com/pingcap/go-randgen/grammar/yacc_parser"
 )
 
 // get Iterator by yy,

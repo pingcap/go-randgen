@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/dqinyuan/go-randgen/compare"
+	"github.com/pingcap/go-randgen/compare"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

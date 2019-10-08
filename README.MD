@@ -7,7 +7,7 @@ go version of mysql rangen for db  fuzz test
 ## Install with `go get` Command
 
 ```bash
-go get -u  github.com/dqinyuan/go-randgen/cmd/go-randgen
+go get -u  github.com/pingcap/go-randgen/cmd/go-randgen
 ```
 
 try it:

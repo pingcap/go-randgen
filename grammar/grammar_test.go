@@ -2,7 +2,7 @@ package grammar
 
 import (
 	"fmt"
-	"github.com/dqinyuan/go-randgen/gendata"
+	"github.com/pingcap/go-randgen/gendata"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

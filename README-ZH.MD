@@ -5,7 +5,7 @@ go版本的mysql randgen
 ## go get安装
 
 ```
-go get -u  github.com/dqinyuan/go-randgen/cmd/go-randgen
+go get -u  github.com/pingcap/go-randgen/cmd/go-randgen
 ```
 
 尝试一下：

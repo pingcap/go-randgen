@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"github.com/dqinyuan/go-randgen/gendata"
+	"github.com/pingcap/go-randgen/gendata"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"

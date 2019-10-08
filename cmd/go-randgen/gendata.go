@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"github.com/dqinyuan/go-randgen/compare"
+	"github.com/pingcap/go-randgen/compare"
 	"github.com/spf13/cobra"
 	"log"
 )

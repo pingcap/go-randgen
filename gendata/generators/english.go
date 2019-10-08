@@ -1,7 +1,7 @@
 package generators
 
 import (
-	"github.com/dqinyuan/go-randgen/resource"
+	"github.com/pingcap/go-randgen/resource"
 	"log"
 	"math/rand"
 	"runtime/debug"
