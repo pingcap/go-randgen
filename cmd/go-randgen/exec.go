@@ -184,7 +184,21 @@ func execAction(cmd *cobra.Command, args []string) {
 
 		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
 		if !consistent {
+			sqlIter.PushInAnalyzeHeap()
 			visitor(sql, dsn1Res, dsn2Res)
+		}
+	}
+
+	// print analyze info
+	if analyze > 0 {
+		infos, err := sqlIter.Analyze(analyze)
+		if err != nil {
+			log.Fatalf("analyze fail %v\n", err)
+		}
+
+		for _, info := range infos {
+			fmt.Printf("%s : %d : %d\n", info.NonTerminal,
+				info.Branch, info.Conflicts)
 		}
 	}
 

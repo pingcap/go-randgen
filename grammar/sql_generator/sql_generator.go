@@ -32,7 +32,11 @@ type SQLIterator interface {
 	// Next returns next sql case in iterator With 10 times retry
 	NextWithRetry() (string, error)
 
-	Analyze(int) ([]*BranchAnalyze, error)
+	// push the lastest sql from Next into the analyze heap
+	PushInAnalyzeHeap()
+
+	// return the top n branch in the analyzed sql
+	Analyze(n int) ([]*BranchAnalyze, error)
 }
 
 func initProductionMap(productions []yacc_parser.Production) map[string]yacc_parser.Production {
@@ -64,7 +68,11 @@ type SQLRandomlyIterator struct {
 	debug          bool
 }
 
-func (i *SQLRandomlyIterator) Analyze(top int) ([]*BranchAnalyze, error) {
+func (i *SQLRandomlyIterator) PushInAnalyzeHeap() {
+	panic("implement me")
+}
+
+func (i *SQLRandomlyIterator) Analyze(n int) ([]*BranchAnalyze, error) {
 	if !i.analyze {
 		return nil, errors.New("this iterator not support analyze")
 	}
