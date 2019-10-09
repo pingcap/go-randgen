@@ -33,10 +33,10 @@ make all
 ## Features
 
  1. It has a built-in zz file, you can generate sqls just with a yy file
- 2. Be able to generate sql with connection to db, so it is very fast if you just want sqls
+ 2. Be able to generate sql without connection to db, so it is very fast if you just want sqls
  3. yy syntax is mysql randgen compatible, as long as it doesn't contain embedded perl code
  4. go-randgen supports embedded lua code blocks, just as mysql randgen supports perl code blocks
- 5. Implemented with pure Golang, it design is very flexible, easy to hack
+ 5. Implemented with pure Golang, it's design is very flexible, easy to hack
  6. All exported functions are stateless other than cmd package, if needed, you can call them as a library
  
 ## Quick Start
