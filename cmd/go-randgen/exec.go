@@ -19,6 +19,7 @@ import (
 var dsn1 string
 var dsn2 string
 var order bool
+var analyze int
 var dumpDir string
 
 func newExecCmd() *cobra.Command {
@@ -48,6 +49,8 @@ func newExecCmd() *cobra.Command {
 		false, "compare sql result without order")
 	execCmd.Flags().StringVar(&dumpDir, "dump",
 		"dump", "inconsistent sqls dump directory")
+	execCmd.Flags().IntVar(&analyze, "analyze", 0,
+		"print root bug report after sqls exec over, 0 means stop it, n(n>0) means print top n root cause")
 
 	return execCmd
 }
@@ -167,26 +170,21 @@ func execAction(cmd *cobra.Command, args []string) {
 
 	visitor := dumpVisitor(dsn1, dsn2)
 
-	if queries >= 0 {
-		randSqls := getRandSqls(keyf)
-		err = compare.ByDb(randSqls, db1, db2, !order, visitor)
+	if queries < 0 {
+		log.Println("infinite test...")
+		queries = math.MaxInt32
+	}
 
+	sqlIter := getIter(keyf)
+	for i := 0; i < queries; i++ {
+		sql, err := sqlIter.NextWithRetry()
 		if err != nil {
-			log.Fatalf("Fatal Error: dump fail  %v\n", err)
+			log.Fatalf("Fatal Error: %v \n", err)
 		}
-	} else {
-		log.Println("start infinite test...")
-		sqlIter := getIter(keyf)
-		for {
-			sql, err := sqlIter.NextWithRetry()
-			if err != nil {
-				log.Fatalf("Fatal Error: %v \n", err)
-			}
 
-			consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
-			if !consistent {
-				visitor(sql, dsn1Res, dsn2Res)
-			}
+		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
+		if !consistent {
+			visitor(sql, dsn1Res, dsn2Res)
 		}
 	}
 

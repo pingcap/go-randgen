@@ -9,6 +9,11 @@ import (
 // token sequence of one branch
 type Seq struct {
 	Items []Token
+	MaxHeap  Heap
+}
+
+func NewSeq(items []Token) Seq {
+	return Seq{Items:items}
 }
 
 // one bnf expression
@@ -63,7 +68,7 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 	var tkn Token
 	var prods []Production
 	var p Production
-	var s Seq
+	s := NewSeq(nil)
 	var lastTerm Token
 
 	state := initState
@@ -103,7 +108,7 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 				// multi delimiter will have empty alter
 				s.Items = append(s.Items, &terminal{val:""})
 				p.Alter = append(p.Alter, s)
-				s = Seq{}
+				s = NewSeq(nil)
 			} else if tkn.ToString() == ":" {
 				continue
 			} else {
@@ -120,13 +125,13 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 			case *operator:
 				if v.ToString() == "|" {
 					p.Alter = append(p.Alter, s)
-					s = Seq{}
+					s = NewSeq(nil)
 				}
 				if v.ToString() == ":" {
-					p.Alter = append(p.Alter, Seq{[]Token{&terminal{val:""}}})
+					p.Alter = append(p.Alter, NewSeq([]Token{&terminal{val:""}}))
 					prods = append(prods, p)
 					p = Production{Head:s.Items[0]}
-					s = Seq{}
+					s = NewSeq(nil)
 				}
 				state = delimFetchedState
 			case *nonTerminal, *keyword, *terminal, *CodeBlock:
@@ -146,11 +151,11 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 				if v.val == "|" {
 					s.Items = append(s.Items, lastTerm)
 					p.Alter = append(p.Alter, s)
-					s = Seq{}
+					s = NewSeq(nil)
 				} else if v.val == ":" {
 					// enter next bnf expression
 					p.Alter = append(p.Alter, s)
-					s = Seq{}
+					s = NewSeq(nil)
 					prods = append(prods, p)
 					if !IsTknNonTerminal(lastTerm) {
 						return nil, nil, fmt.Errorf("%s is not nonterminal \n %s",
