@@ -118,6 +118,13 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 	}
 }
 
+const analyzeTemp = `%s : %d : %d : %s
+
+example sql:
+
+%s
+`
+
 func execAction(cmd *cobra.Command, args []string) {
 	if isDirExist(dumpDir) {
 		log.Fatalln("Fatal Error: dump directory already exist")
@@ -193,8 +200,8 @@ func execAction(cmd *cobra.Command, args []string) {
 		}
 
 		for _, info := range infos {
-			fmt.Printf("%s : %d : %d\n", info.NonTerminal,
-				info.Branch, info.Conflicts)
+			fmt.Printf(analyzeTemp, info.NonTerminal,
+				info.Branch, info.Conflicts, info.Content, info.ExampleSql)
 		}
 	}
 

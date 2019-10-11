@@ -18,6 +18,10 @@ type BranchAnalyze struct {
 	Branch int
 	// confilct number of this branch
 	Conflicts int
+	// the content expanded by this branch
+	Content  string
+	// one of confict sqls
+	ExampleSql string
 }
 
 // return false means normal stop visit
