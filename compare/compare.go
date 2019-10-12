@@ -3,15 +3,43 @@ package compare
 import (
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"log"
+	"strconv"
 )
 
-type DsnRes struct {
-	Res *SqlResult
-	Err error
+type DsnRes interface {
+	fmt.Stringer
+	Err() error
 }
 
-type Visitor func(sql string, dsn1Res *DsnRes, dsn2Res *DsnRes) error
+type QueryDsnRes struct {
+	Res *SqlResult
+	err error
+}
+
+func (q *QueryDsnRes) Err() error {
+	return q.err
+}
+
+func (q *QueryDsnRes) String() string {
+	return q.Res.String()
+}
+
+type execDsnRes struct {
+	rowsAffected int64
+	err          error
+}
+
+func (e *execDsnRes) String() string {
+	return strconv.FormatInt(e.rowsAffected, 10)
+}
+
+func (e *execDsnRes) Err() error {
+	return e.err
+}
+
+type Visitor func(sql string, dsn1Res DsnRes, dsn2Res DsnRes) error
 
 func ByDsn(sqls []string, dsn1 string, dsn2 string, nonOrder bool, visitor Visitor) error {
 
@@ -47,8 +75,17 @@ func ByDb(sqls []string, db1 *sql.DB, db2 *sql.DB, nonOrder bool, visitor Visito
 	return nil
 }
 
-func BySql(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bool, dsn1Res *DsnRes,
-	dsn2Res *DsnRes) {
+func BySql(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bool, dsn1Res DsnRes,
+	dsn2Res DsnRes) {
+	if isExec(sql) {
+		return ByExec(sql, db1, db2)
+	} else {
+		return ByQuery(sql, db1, db2, nonOrder)
+	}
+}
+
+func ByQuery(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bool, dsn1Res DsnRes,
+	dsn2Res DsnRes) {
 	r1, err1 := query(db1, sql)
 	r2, err2 := query(db2, sql)
 
@@ -60,8 +97,8 @@ func BySql(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bool
 		log.Printf("Error: connection to dsn2 error, %v \n", err2)
 	}
 
-	dsn1Res = &DsnRes{r1, err1}
-	dsn2Res = &DsnRes{r2, err2}
+	dsn1Res = &QueryDsnRes{r1, err1}
+	dsn2Res = &QueryDsnRes{r2, err2}
 
 	if !errConsistent(err1, err2) {
 		return false, dsn1Res, dsn2Res
@@ -81,6 +118,33 @@ func BySql(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bool
 		if !r1.BytesEqualTo(r2) {
 			return false, dsn1Res, dsn2Res
 		}
+	}
+
+	return true, dsn1Res, dsn2Res
+}
+
+func ByExec(sql string, db1 *sql.DB, db2 *sql.DB) (consistent bool, dsn1Res DsnRes,
+	dsn2Res DsnRes) {
+	r1, err1 := exec(db1, sql)
+	r2, err2 := exec(db2, sql)
+
+	if err1 == driver.ErrBadConn {
+		log.Printf("Error: connection to dsn1 error, %v \n", err1)
+	}
+
+	if err2 == driver.ErrBadConn {
+		log.Printf("Error: connection to dsn2 error, %v \n", err2)
+	}
+
+	dsn1Res = &execDsnRes{r1, err1}
+	dsn2Res = &execDsnRes{r2, err2}
+
+	if !errConsistent(err1, err2) {
+		return false, dsn1Res, dsn2Res
+	}
+
+	if r1 != r2 {
+		return false, dsn1Res, dsn2Res
 	}
 
 	return true, dsn1Res, dsn2Res

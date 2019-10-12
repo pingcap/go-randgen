@@ -48,10 +48,10 @@ func TestDumpInfo(t *testing.T) {
 		sql:"select * from test",
 		dsn1:"xxx:password@protocol(address)/dbname",
 		dsn2:"yyy:password@protocol(address)/dbname",
-		dsn1Res:&compare.DsnRes{
+		dsn1Res:&compare.QueryDsnRes{
 			Res:mockRes1,
 		},
-		dsn2Res:&compare.DsnRes{
+		dsn2Res:&compare.QueryDsnRes{
 			Res:mockRes1,
 		},
 	}
