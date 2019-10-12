@@ -141,7 +141,7 @@ func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	productions []yacc_parser.Production,
 	keyFunc gendata.Keyfun, productionName string, maxRecursive int,
-	analyze bool, debug bool) (SQLIterator, error) {
+	debug bool) (SQLIterator, error) {
 	pMap := initProductionMap(productions)
 	l := lua.NewState()
 	// run head code blocks
@@ -163,7 +163,6 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 		printBuf:       pBuf,
 		maxRecursive:   maxRecursive,
 		cachedStmts:    newQueue(),
-		analyze:        analyze,
 		debug:          debug,
 	}, nil
 }

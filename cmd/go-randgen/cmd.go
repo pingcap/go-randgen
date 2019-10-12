@@ -125,8 +125,7 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 func getIter(keyf gendata.Keyfun) sql_generator.SQLIterator {
 	yy := loadYy()
 
-	iterator, err := grammar.NewIter(yy, root, maxRecursive, keyf,
-		analyze > 0, debug)
+	iterator, err := grammar.NewIter(yy, root, maxRecursive, keyf, debug)
 	if err != nil {
 		log.Fatalln("Fatal Error: " + err.Error())
 	}

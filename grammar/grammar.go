@@ -9,7 +9,7 @@ import (
 // get Iterator by yy,
 // note that this iterator is not thread safe
 func NewIter(yy string, root string, maxRecursive int,
-	keyFunc gendata.Keyfun, analyze bool, debug bool) (sql_generator.SQLIterator, error) {
+	keyFunc gendata.Keyfun, debug bool) (sql_generator.SQLIterator, error) {
 	reader := &yacc_parser.RuneSeq{Runes:[]rune(yy), Pos:0}
 	codeblocks, productions, err := yacc_parser.Parse(yacc_parser.Tokenize(reader))
 	if err != nil {
@@ -17,7 +17,7 @@ func NewIter(yy string, root string, maxRecursive int,
 	}
 
 	sqlIter, err := sql_generator.GenerateSQLRandomly(codeblocks,
-		productions, keyFunc, root, maxRecursive, analyze, debug)
+		productions, keyFunc, root, maxRecursive, debug)
 	if err != nil {
 		return nil, err
 	}
