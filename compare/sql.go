@@ -46,7 +46,7 @@ var OpenDBWithRetry = func(driverName, dataSourceName string) (mdb *sql.DB, err 
 
 // sql result present one query result receive from database
 type SqlResult struct {
-	// [row][col][content(nil represent NULL)]
+	// [row][col][content(nil when it is NULL)]
 	Data        [][][]byte
 	Rows        map[string]bool
 	Header      []string
@@ -236,6 +236,37 @@ func query(db *sql.DB, sql string) (*SqlResult, error) {
 
 
 	return &SqlResult{Data: allRows, Rows:rowSet, Header: cols, ColumnTypes: types}, nil
+}
+
+
+func exec(db *sql.DB, sql string) (int64, error) {
+	result, err := db.Exec(sql)
+	if err != nil {
+		return 0, nil
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	return rowsAffected, nil
+}
+
+var execSqls = map[string]bool{
+	"delete" : true,
+	"create" : true,
+	"update" : true,
+}
+
+func isExec(sql string) bool {
+	if len(sql) <= 6 {
+		return false
+	}
+
+	prefix := sql[0:6]
+	_, ok := execSqls[strings.ToLower(prefix)]
+	return ok
 }
 
 func ExecSqlsInDbs(sqls []string, dbs ... *sql.DB) (string, error) {

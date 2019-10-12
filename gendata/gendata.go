@@ -185,6 +185,26 @@ var fClass = map[string]int{
 
 type Keyfun map[string]func() (string, error)
 
+func joinFields(fields []*fieldExec) string {
+	strBuf := bytes.Buffer{}
+
+	for i, f := range fields {
+		if i == 0 {
+			strBuf.WriteRune('`')
+		} else {
+			strBuf.WriteString("`,`")
+		}
+
+		strBuf.WriteString(f.name)
+
+		if i == len(fields) - 1 {
+			strBuf.WriteRune('`')
+		}
+	}
+
+	return strBuf.String()
+}
+
 func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 	fieldsInt := make([]*fieldExec, 0)
 	fieldsChar := make([]*fieldExec, 0)
@@ -218,11 +238,29 @@ func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 			}
 			return "`" + fieldsInt[rand.Intn(len(fieldsInt))].name + "`", nil
 		},
+		"_field_int_list": func() (s string, e error) {
+			if len(fieldsInt) == 0 {
+				return "", errors.New("there is no int fields")
+			}
+			return joinFields(fieldsInt), nil
+		},
 		"_field_char": func() (string, error) {
 			if len(fieldsChar) == 0 {
 				return "", errors.New("there is no char fields")
 			}
 			return "`" + fieldsChar[rand.Intn(len(fieldsChar))].name + "`", nil
+		},
+		"_field_char_list": func() (s string, e error) {
+			if len(fieldsChar) == 0 {
+				return "", errors.New("there is no char fields")
+			}
+			return joinFields(fieldsChar), nil
+		},
+		"_field_list": func() (s string, e error) {
+			if len(fields) == 0 {
+				return "", errors.New("there is no char fields")
+			}
+			return joinFields(fields), nil
 		},
 	}
 
