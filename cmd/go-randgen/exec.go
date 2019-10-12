@@ -19,7 +19,6 @@ import (
 var dsn1 string
 var dsn2 string
 var order bool
-var analyze int
 var dumpDir string
 
 func newExecCmd() *cobra.Command {
@@ -49,8 +48,6 @@ func newExecCmd() *cobra.Command {
 		false, "compare sql result without order")
 	execCmd.Flags().StringVar(&dumpDir, "dump",
 		"dump", "inconsistent sqls dump directory")
-	execCmd.Flags().IntVar(&analyze, "analyze", 0,
-		"print root bug report after sqls exec over, 0 means stop it, n(n>0) means print top n root cause")
 
 	return execCmd
 }
@@ -121,7 +118,10 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 }
 
 func execAction(cmd *cobra.Command, args []string) {
-	fmt.Println(order)
+	if isDirExist(dumpDir) {
+		log.Fatalln("Fatal Error: dump directory already exist")
+	}
+
 	db1, err := compare.OpenDBWithRetry("mysql", dsn1)
 	if err != nil {
 		log.Fatalf("connect dsn1 %s error %v\n", dsn1, err)
@@ -155,10 +155,6 @@ func execAction(cmd *cobra.Command, args []string) {
 			log.Fatalf("Fatal Error: %v\n", err)
 		}
 		log.Println("skip generate data")
-	}
-
-	if isDirExist(dumpDir) {
-		log.Fatalln("Fatal Error: dump directory already exist")
 	}
 
 	err = os.MkdirAll(dumpDir, os.ModePerm)
