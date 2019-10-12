@@ -24,23 +24,3 @@ func NewIter(yy string, root string, maxRecursive int,
 
 	return sqlIter, nil
 }
-
-func ByYy(yy string, num int, root string, maxRecursive int,
-	keyFunc gendata.Keyfun, debug bool) ([]string, error) {
-
-	sqlIter, err := NewIter(yy, root, maxRecursive, keyFunc, debug)
-	if err != nil {
-		return nil, err
-	}
-
-	sqls := make([]string, 0, num)
-	for i := 0; i < num; i++ {
-		sql, err := sqlIter.NextWithRetry()
-		if err != nil {
-			return nil, err
-		}
-		sqls = append(sqls, sql)
-	}
-
-	return sqls, nil
-}

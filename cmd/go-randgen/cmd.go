@@ -107,11 +107,16 @@ func loadYy() string {
 
 func getRandSqls(keyf gendata.Keyfun) []string {
 
-	yy := loadYy()
+	randomSqls := make([]string, 0, queries)
 
-	randomSqls, err := grammar.ByYy(yy, queries, root, maxRecursive, keyf, debug)
-	if err != nil {
-		log.Fatalln("Fatal Error: " + err.Error())
+	sqlIter := getIter(keyf)
+	for i := 0; i < queries; i++ {
+		sql, err := sqlIter.NextWithRetry()
+		if err != nil {
+			log.Fatalf("Fatal Error: %v \n", err)
+		}
+
+		randomSqls = append(randomSqls, sql)
 	}
 
 	return randomSqls

@@ -118,7 +118,10 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 }
 
 func execAction(cmd *cobra.Command, args []string) {
-	fmt.Println(order)
+	if isDirExist(dumpDir) {
+		log.Fatalln("Fatal Error: dump directory already exist")
+	}
+
 	db1, err := compare.OpenDBWithRetry("mysql", dsn1)
 	if err != nil {
 		log.Fatalf("connect dsn1 %s error %v\n", dsn1, err)
@@ -154,10 +157,6 @@ func execAction(cmd *cobra.Command, args []string) {
 		log.Println("skip generate data")
 	}
 
-	if isDirExist(dumpDir) {
-		log.Fatalln("Fatal Error: dump directory already exist")
-	}
-
 	err = os.MkdirAll(dumpDir, os.ModePerm)
 	if err != nil {
 		log.Fatalf("Fatal Error: dump dir %s create fail %v\n", dumpDir, err)
@@ -167,26 +166,21 @@ func execAction(cmd *cobra.Command, args []string) {
 
 	visitor := dumpVisitor(dsn1, dsn2)
 
-	if queries >= 0 {
-		randSqls := getRandSqls(keyf)
-		err = compare.ByDb(randSqls, db1, db2, !order, visitor)
+	if queries < 0 {
+		log.Println("infinite test...")
+		queries = math.MaxInt32
+	}
 
+	sqlIter := getIter(keyf)
+	for i := 0; i < queries; i++ {
+		sql, err := sqlIter.NextWithRetry()
 		if err != nil {
-			log.Fatalf("Fatal Error: dump fail  %v\n", err)
+			log.Fatalf("Fatal Error: %v \n", err)
 		}
-	} else {
-		log.Println("start infinite test...")
-		sqlIter := getIter(keyf)
-		for {
-			sql, err := sqlIter.NextWithRetry()
-			if err != nil {
-				log.Fatalf("Fatal Error: %v \n", err)
-			}
 
-			consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
-			if !consistent {
-				visitor(sql, dsn1Res, dsn2Res)
-			}
+		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
+		if !consistent {
+			visitor(sql, dsn1Res, dsn2Res)
 		}
 	}
 

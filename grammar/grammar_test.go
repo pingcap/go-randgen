@@ -17,7 +17,7 @@ type yyTestCase struct {
 	expSeq    []string
 }
 
-func TestByYy(t *testing.T) {
+func TestIter(t *testing.T) {
 	cases := []*yyTestCase{
 		{
 			name: "test embeded lua",
@@ -119,11 +119,14 @@ query:
 	for _, c := range cases {
 
 		t.Run(c.name, func(t *testing.T) {
-			sqls, err := ByYy(c.yy, c.num, "query",
-				5, c.keyFun, false)
+			iterator, err := NewIter(c.yy, "query", 5,
+				c.keyFun, false)
 			assert.Equal(t, nil, err)
 
-			for i, sql := range sqls {
+			for i := 0; i < c.num; i++ {
+				sql, err := iterator.NextWithRetry()
+				assert.Equal(t, nil, err)
+
 				if c.expected != nil {
 					assert.Condition(t, func() (success bool) {
 						return c.expected(sql)
@@ -147,7 +150,12 @@ query:
 select:
    SELECT select
 `
-	_, err := ByYy(recurYy, 10, "query", 5, nil, false)
+	iterator, err := NewIter(recurYy, "query", 5,
+		nil, false)
+	assert.Equal(t, nil, err)
+
+	_, err = iterator.NextWithRetry()
+
 	assert.Equal(t,
 		"next retry num exceed 10, `select` expression recursive num exceed max loop back 5\n [query select select select select select]",
 		err.Error())
@@ -172,7 +180,8 @@ select:
 
 func TestByYySimplePrint(t *testing.T) {
 	t.SkipNow()
-	sqls, err := ByYy(yy, 10, "query", 5, map[string]func() (string, error){
+
+	iter, err := NewIter(yy, "query", 5, map[string]func() (string, error){
 		"_table": func() (string, error) {
 			return "aaa_tabl", nil
 		},
@@ -182,7 +191,9 @@ func TestByYySimplePrint(t *testing.T) {
 	}, false)
 	assert.Equal(t, nil, err)
 
-	for _, sql := range sqls {
+	for i := 0; i < 10; i++ {
+		sql, err := iter.NextWithRetry()
+		assert.Equal(t, nil, err)
 		fmt.Println(sql)
 	}
 }

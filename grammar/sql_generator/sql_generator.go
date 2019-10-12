@@ -4,13 +4,21 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/yuin/gopher-lua"
 	"github.com/pingcap/go-randgen/gendata"
 	"github.com/pingcap/go-randgen/grammar/yacc_parser"
+	"github.com/yuin/gopher-lua"
 	"io"
 	"log"
 	"math/rand"
 )
+
+type BranchAnalyze struct {
+	NonTerminal string
+	// serial number of this branch
+	Branch int
+	// confilct number of this branch
+	Conflicts int
+}
 
 // SQLIterator is a iterator interface of sql generator
 // SQLIterator is not thread safe
@@ -23,6 +31,8 @@ type SQLIterator interface {
 
 	// Next returns next sql case in iterator With 10 times retry
 	NextWithRetry() (string, error)
+
+	Analyze(int) ([]*BranchAnalyze, error)
 }
 
 func initProductionMap(productions []yacc_parser.Production) map[string]yacc_parser.Production {
@@ -50,7 +60,16 @@ type SQLRandomlyIterator struct {
 	printBuf       *bytes.Buffer
 	maxRecursive   int
 	cachedStmts    *queue
+	analyze        bool
 	debug          bool
+}
+
+func (i *SQLRandomlyIterator) Analyze(top int) ([]*BranchAnalyze, error) {
+	if !i.analyze {
+		return nil, errors.New("this iterator not support analyze")
+	}
+
+	return nil, nil
 }
 
 // HasNext returns whether the iterator exists next sql case
@@ -90,7 +109,7 @@ func (i *SQLRandomlyIterator) NextWithRetry() (string, error) {
 
 	for {
 		sql, err := i.Next()
-		if err != nil{
+		if err != nil {
 			counter++
 			if counter > maxRetry {
 				return "", fmt.Errorf("next retry num exceed %d, %v", maxRetry, err)
@@ -106,7 +125,6 @@ func (i *SQLRandomlyIterator) NextWithRetry() (string, error) {
 	}
 }
 
-
 func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 	return func(state *lua.LState) int {
 		buf.WriteString(state.ToString(1))
@@ -116,10 +134,14 @@ func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 
 // GenerateSQLSequentially returns a `SQLSequentialIterator` which can generate sql case by case randomly
 // productions is a `Production` array created by `yacc_parser.Parse`
-// productionName assigns a production name as the root node.
+// productionName assigns a production name as the root node
+// maxRecursive is max bnf extend recursive number in sql generation
+// analyze flag is to open root cause analyze feature
+// if debug is true, the iterator will print all paths during generation
 func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	productions []yacc_parser.Production,
-	keyFunc gendata.Keyfun, productionName string, maxRecursive int, debug bool) (SQLIterator, error) {
+	keyFunc gendata.Keyfun, productionName string, maxRecursive int,
+	debug bool) (SQLIterator, error) {
 	pMap := initProductionMap(productions)
 	l := lua.NewState()
 	// run head code blocks
@@ -145,7 +167,7 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	}, nil
 }
 
-func (i *SQLRandomlyIterator) printDebugInfo(word string, path []string)  {
+func (i *SQLRandomlyIterator) printDebugInfo(word string, path []string) {
 	if i.debug {
 		log.Printf("word `%s` path: %v\n", word, path)
 	}
@@ -181,7 +203,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			// semicolon
 			if item.ToString() == ";" {
 				// not last rune in bnf expression
-				if selectIndex != len(production.Alter) - 1 || index != len(seqs.Items) - 1 {
+				if selectIndex != len(production.Alter)-1 || index != len(seqs.Items)-1 {
 					i.cachedStmts.enqueue(writer.String())
 					writer.Reset()
 					firstWrite = true
