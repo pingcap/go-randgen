@@ -7,6 +7,7 @@ import (
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/pingcap/go-randgen/gendata"
 	"github.com/fatih/color"
+	"github.com/pingcap/go-randgen/grammar/sql_generator"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -172,16 +173,15 @@ func execAction(cmd *cobra.Command, args []string) {
 	}
 
 	sqlIter := getIter(keyf)
-	for i := 0; i < queries; i++ {
-		sql, err := sqlIter.NextWithRetry()
-		if err != nil {
-			log.Fatalf("Fatal Error: %v \n", err)
-		}
-
+	err = sqlIter.Visit(sql_generator.MaxTimeVisitor(func(_ int, sql string) {
 		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
 		if !consistent {
 			visitor(sql, dsn1Res, dsn2Res)
 		}
+	}, queries))
+
+	if err != nil {
+		log.Fatalf("Fatal Error: %v \n", err)
 	}
 
 	log.Println("dump ok")
