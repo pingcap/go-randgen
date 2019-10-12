@@ -3,6 +3,7 @@ package grammar
 import (
 	"fmt"
 	"github.com/pingcap/go-randgen/gendata"
+	"github.com/pingcap/go-randgen/grammar/sql_generator"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -123,10 +124,7 @@ query:
 				c.keyFun, false)
 			assert.Equal(t, nil, err)
 
-			for i := 0; i < c.num; i++ {
-				sql, err := iterator.NextWithRetry()
-				assert.Equal(t, nil, err)
-
+			iterator.Visit(sql_generator.MaxTimeVisitor(func(i int, sql string) {
 				if c.expected != nil {
 					assert.Condition(t, func() (success bool) {
 						return c.expected(sql)
@@ -136,7 +134,7 @@ query:
 				} else {
 					assert.Equal(t, c.simpleExp, sql)
 				}
-			}
+			}, c.num))
 		})
 	}
 
@@ -154,10 +152,12 @@ select:
 		nil, false)
 	assert.Equal(t, nil, err)
 
-	_, err = iterator.NextWithRetry()
+	err = iterator.Visit(func(sql string) bool {
+		return false
+	})
 
 	assert.Equal(t,
-		"next retry num exceed 10, `select` expression recursive num exceed max loop back 5\n [query select select select select select]",
+		"`select` expression recursive num exceed max loop back 5\n [query select select select select select]",
 		err.Error())
 }
 
@@ -191,9 +191,7 @@ func TestByYySimplePrint(t *testing.T) {
 	}, false)
 	assert.Equal(t, nil, err)
 
-	for i := 0; i < 10; i++ {
-		sql, err := iter.NextWithRetry()
-		assert.Equal(t, nil, err)
+	iter.Visit(sql_generator.MaxTimeVisitor(func(_ int, sql string) {
 		fmt.Println(sql)
-	}
+	}, 10))
 }

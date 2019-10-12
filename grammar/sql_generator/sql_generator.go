@@ -20,17 +20,27 @@ type BranchAnalyze struct {
 	Conflicts int
 }
 
+// return false means normal stop visit
+type SqlVisitor func(sql string) bool
+
+func MaxTimeVisitor(f func(i int, sql string), max int) SqlVisitor {
+	i := 0
+	return func(sql string) bool {
+		f(i, sql)
+		i++
+		if i == max {
+			return false
+		}
+		return true
+	}
+}
+
 // SQLIterator is a iterator interface of sql generator
 // SQLIterator is not thread safe
 type SQLIterator interface {
-	// HasNext returns whether the iterator exists next sql case
-	HasNext() bool
 
 	// Next returns next sql case in iterator
-	Next() (string, error)
-
-	// Next returns next sql case in iterator With 10 times retry
-	NextWithRetry() (string, error)
+	Visit(visitor SqlVisitor) error
 
 	Analyze(int) ([]*BranchAnalyze, error)
 }
@@ -59,7 +69,6 @@ type SQLRandomlyIterator struct {
 	luaVM          *lua.LState
 	printBuf       *bytes.Buffer
 	maxRecursive   int
-	cachedStmts    *queue
 	analyze        bool
 	debug          bool
 }
@@ -72,57 +81,25 @@ func (i *SQLRandomlyIterator) Analyze(top int) ([]*BranchAnalyze, error) {
 	return nil, nil
 }
 
-// HasNext returns whether the iterator exists next sql case
-func (i *SQLRandomlyIterator) HasNext() bool {
-	return true
-}
-
-// Next returns next sql case in iterator
-// it will panic when the iterator doesn't exist next sql case
-func (i *SQLRandomlyIterator) Next() (string, error) {
-	// from cache first
-	if !i.cachedStmts.isEmpty() {
-		return i.cachedStmts.dequeue(), nil
-	}
-
-	stringBuffer := bytes.NewBuffer([]byte{})
-	_, err := i.generateSQLRandomly(i.productionName, nil, stringBuffer, false)
-	if err != nil {
-		return "", err
-	}
-	if stringBuffer.Len() > 0 {
-		i.cachedStmts.enqueue(stringBuffer.String())
-	}
-
-	if !i.cachedStmts.isEmpty() {
-		return i.cachedStmts.dequeue(), nil
-	} else {
-		// generate empty string
-		return "", nil
-	}
-}
-
-const maxRetry = 10
-
-func (i *SQLRandomlyIterator) NextWithRetry() (string, error) {
-	counter := 0
+// visitor sqls generted by the iterator
+func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
+	stringBuffer := &bytes.Buffer{}
 
 	for {
-		sql, err := i.Next()
-		if err != nil {
-			counter++
-			if counter > maxRetry {
-				return "", fmt.Errorf("next retry num exceed %d, %v", maxRetry, err)
-			}
-			continue
+		_, err := i.generateSQLRandomly(i.productionName, nil, stringBuffer,
+			false, visitor)
+		if err != nil && err != normalStop {
+			return err
 		}
 
-		if i.debug {
-			log.Println(sql)
+		if err == normalStop || !visitor(stringBuffer.String()) {
+			return nil
 		}
 
-		return sql, nil
+		stringBuffer.Reset()
 	}
+
+	return nil
 }
 
 func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
@@ -162,10 +139,11 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 		luaVM:          l,
 		printBuf:       pBuf,
 		maxRecursive:   maxRecursive,
-		cachedStmts:    newQueue(),
 		debug:          debug,
 	}, nil
 }
+
+var normalStop = errors.New("generateSQLRandomly: normal stop visit")
 
 func (i *SQLRandomlyIterator) printDebugInfo(word string, path []string) {
 	if i.debug {
@@ -174,7 +152,7 @@ func (i *SQLRandomlyIterator) printDebugInfo(word string, path []string) {
 }
 
 func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
-	parents []string, writer *bytes.Buffer, parentPreSpace bool) (hasWrite bool, err error) {
+	parents []string, writer *bytes.Buffer, parentPreSpace bool, visitor SqlVisitor) (hasWrite bool, err error) {
 	// get root production
 	production, exist := i.productionMap[productionName]
 	if !exist {
@@ -204,7 +182,9 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			if item.ToString() == ";" {
 				// not last rune in bnf expression
 				if selectIndex != len(production.Alter)-1 || index != len(seqs.Items)-1 {
-					i.cachedStmts.enqueue(writer.String())
+					if !visitor(writer.String()) {
+						return !firstWrite, normalStop
+					}
 					writer.Reset()
 					firstWrite = true
 					continue
@@ -264,9 +244,11 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			// nonTerminal recursive
 			var hasSubWrite bool
 			if firstWrite {
-				hasSubWrite, err = i.generateSQLRandomly(item.ToString(), parents, writer, parentPreSpace)
+				hasSubWrite, err = i.generateSQLRandomly(item.ToString(), parents,
+					writer, parentPreSpace, visitor)
 			} else {
-				hasSubWrite, err = i.generateSQLRandomly(item.ToString(), parents, writer, item.HasPreSpace())
+				hasSubWrite, err = i.generateSQLRandomly(item.ToString(), parents,
+					writer, item.HasPreSpace(), visitor)
 			}
 
 			if firstWrite && hasSubWrite {

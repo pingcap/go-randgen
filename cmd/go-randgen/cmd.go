@@ -110,13 +110,13 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 	randomSqls := make([]string, 0, queries)
 
 	sqlIter := getIter(keyf)
-	for i := 0; i < queries; i++ {
-		sql, err := sqlIter.NextWithRetry()
-		if err != nil {
-			log.Fatalf("Fatal Error: %v \n", err)
-		}
 
+	err := sqlIter.Visit(sql_generator.MaxTimeVisitor(func(_ int, sql string) {
 		randomSqls = append(randomSqls, sql)
+	}, queries))
+
+	if err != nil {
+		log.Fatalf("Fatal Error: %v \n", err)
 	}
 
 	return randomSqls
