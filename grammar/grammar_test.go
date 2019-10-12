@@ -120,7 +120,7 @@ query:
 
 		t.Run(c.name, func(t *testing.T) {
 			iterator, err := NewIter(c.yy, "query", 5,
-				c.keyFun, false, false)
+				c.keyFun, false)
 			assert.Equal(t, nil, err)
 
 			for i := 0; i < c.num; i++ {
@@ -151,7 +151,7 @@ select:
    SELECT select
 `
 	iterator, err := NewIter(recurYy, "query", 5,
-		nil, false, false)
+		nil, false)
 	assert.Equal(t, nil, err)
 
 	_, err = iterator.NextWithRetry()
@@ -188,7 +188,7 @@ func TestByYySimplePrint(t *testing.T) {
 		"_field": func() (string, error) {
 			return "ffff", nil
 		},
-	}, false, false)
+	}, false)
 	assert.Equal(t, nil, err)
 
 	for i := 0; i < 10; i++ {
