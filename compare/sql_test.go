@@ -99,10 +99,13 @@ func TestQuery(t *testing.T) {
 }
 
 func TestQueryMysql(t *testing.T)  {
+	t.SkipNow()
 	db, err := OpenDBWithRetry("mysql", "root:123456@tcp(127.0.0.1:3306)/randgen")
 	assert.Equal(t, nil, err)
 
-	result, err := query(db, "create table test(a int)")
-	fmt.Println(result)
+	result, err := db.Exec("select * from test")
+
+	//result, err := query(db, "update test set a=10 where a=9")
+	fmt.Println(result.RowsAffected())
 	fmt.Println(err)
 }

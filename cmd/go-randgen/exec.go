@@ -57,8 +57,8 @@ type dumpInfo struct {
 	sql string
 	dsn1 string
 	dsn2 string
-	dsn1Res *compare.DsnRes
-	dsn2Res *compare.DsnRes
+	dsn1Res compare.DsnRes
+	dsn2Res compare.DsnRes
 }
 
 func (dump *dumpInfo) String() string {
@@ -73,18 +73,18 @@ func (dump *dumpInfo) String() string {
 	// [err]
 	bs.WriteString("[err]\n\n")
 	bs.WriteString(dsn1Tag)
-	if dump.dsn1Res.Err != nil {
-		bs.WriteString(dump.dsn1Res.Err.Error() + "\n\n")
+	if dump.dsn1Res.Err() != nil {
+		bs.WriteString(dump.dsn1Res.Err().Error() + "\n\n")
 	}
 	bs.WriteString(dsn2Tag)
-	if dump.dsn2Res.Err != nil {
-		bs.WriteString(dump.dsn2Res.Err.Error() + "\n\n")
+	if dump.dsn2Res.Err() != nil {
+		bs.WriteString(dump.dsn2Res.Err().Error() + "\n\n")
 	}
 
 	// [compare]
 	bs.WriteString("[compare]\n\n")
-	dsn1Colored, dsn2Colored := getColorDiff(dump.dsn1Res.Res.String(),
-		dump.dsn2Res.Res.String())
+	dsn1Colored, dsn2Colored := getColorDiff(dump.dsn1Res.String(),
+		dump.dsn2Res.String())
 	bs.WriteString(dsn1Tag)
 	bs.WriteString(dsn1Colored + "\n\n")
 	bs.WriteString(dsn2Tag)
@@ -96,7 +96,7 @@ func (dump *dumpInfo) String() string {
 // dump inconsistent sqls and diff info into dump dir
 func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 	count := 0
-	return func(sql string, dsn1Res *compare.DsnRes, dsn2Res *compare.DsnRes) error {
+	return func(sql string, dsn1Res compare.DsnRes, dsn2Res compare.DsnRes) error {
 
 		info := &dumpInfo{
 			num:count,

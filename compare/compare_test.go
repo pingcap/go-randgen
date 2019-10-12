@@ -10,12 +10,15 @@ import (
 )
 
 type mockQuery struct {
-	sql        string
-	header     []string
-	db1MockRes [][]driver.Value
-	db1err     error
-	db2MockRes [][]driver.Value
-	db2err     error
+	sql         string
+	exec        bool
+	header      []string
+	db1MockRes  [][]driver.Value
+	db1err      error
+	db1Affected int64
+	db2MockRes  [][]driver.Value
+	db2err      error
+	db2Affected int64
 }
 
 func getRows(header []string, rows [][]driver.Value) *sqlmock.Rows {
@@ -35,20 +38,40 @@ func initMockDb(t *testing.T, mqs []*mockQuery) (*sql.DB, *sql.DB) {
 	assert.Equal(t, nil, err)
 
 	for _, mq := range mqs {
-		if mq.db1err != nil {
-			mock1.ExpectQuery(mq.sql).
-				WillReturnError(mq.db1err)
-		} else {
-			mock1.ExpectQuery(mq.sql).
-				WillReturnRows(getRows(mq.header, mq.db1MockRes))
-		}
 
-		if mq.db2err != nil {
-			mock2.ExpectQuery(mq.sql).
-				WillReturnError(mq.db2err)
+		if mq.exec {
+			if mq.db1err != nil {
+				mock1.ExpectExec(mq.sql).
+					WillReturnError(mq.db1err)
+			} else {
+				mock1.ExpectExec(mq.sql).
+					WillReturnResult(sqlmock.NewResult(0, mq.db1Affected))
+			}
+
+			if mq.db2err != nil {
+				mock2.ExpectExec(mq.sql).
+					WillReturnError(mq.db2err)
+			} else {
+				mock2.ExpectExec(mq.sql).
+					WillReturnResult(sqlmock.NewResult(0, mq.db2Affected))
+			}
+
 		} else {
-			mock2.ExpectQuery(mq.sql).
-				WillReturnRows(getRows(mq.header, mq.db2MockRes))
+			if mq.db1err != nil {
+				mock1.ExpectQuery(mq.sql).
+					WillReturnError(mq.db1err)
+			} else {
+				mock1.ExpectQuery(mq.sql).
+					WillReturnRows(getRows(mq.header, mq.db1MockRes))
+			}
+
+			if mq.db2err != nil {
+				mock2.ExpectQuery(mq.sql).
+					WillReturnError(mq.db2err)
+			} else {
+				mock2.ExpectQuery(mq.sql).
+					WillReturnRows(getRows(mq.header, mq.db2MockRes))
+			}
 		}
 	}
 
@@ -65,24 +88,24 @@ Test follow situations:
  6. no err, row is non order
  */
 var mqs = []*mockQuery{
-	// both query err
+	// 1 both query err
 	{
-		sql:    "test0",
+		sql:    "select a from test0",
 		db1err: errors.New("test1 error1"),
 		db2err: errors.New("test1 error2"),
 	},
-	// one query err
+	// 2 one query err
 	{
-		sql:    "test1",
+		sql:    "SELECT b FROM test1",
 		db1err: errors.New("test2 error1"),
 		header: []string{"name", "age", "sex"},
 		db2MockRes: [][]driver.Value{
 			{"Tom", 10, "male"},
 		},
 	},
-	// no err, rows is consistent
+	// 3 no err, rows is consistent
 	{
-		sql:    "test2",
+		sql:    "SELECT c FROM test2",
 		header: []string{"name", "age", "sex"},
 		db1MockRes: [][]driver.Value{
 			{"Tom", 11, "male"},
@@ -93,9 +116,9 @@ var mqs = []*mockQuery{
 			{"Lily", 29, "female"},
 		},
 	},
-	// no err, rows is inconsistent
+	// 4 no err, rows is inconsistent
 	{
-		sql:    "test3",
+		sql:    "select d from test3",
 		header: []string{"name", "age", "sex"},
 		db1MockRes: [][]driver.Value{
 			{"Tom", 10, "male"},
@@ -106,9 +129,9 @@ var mqs = []*mockQuery{
 			{"Lily", 29, "female"},
 		},
 	},
-	// no err, record num is inconsistent
+	// 5 no err, record num is inconsistent
 	{
-		sql:    "test4",
+		sql:    "SELECT E FROM test4",
 		header: []string{"name", "age", "sex"},
 		db1MockRes: [][]driver.Value{
 			{"Tom", 10, "male"},
@@ -124,9 +147,9 @@ var mqs = []*mockQuery{
 			{"Worker", 13, "male"},
 		},
 	},
-	// no err, row is non order
+	// 6 no err, row is non order
 	{
-		sql:    "test5",
+		sql:    "SELECT mmm FROM test5",
 		header: []string{"name", "age", "sex"},
 		db1MockRes: [][]driver.Value{
 			{"Tom", 10, "male"},
@@ -140,6 +163,19 @@ var mqs = []*mockQuery{
 			{"Tom", 10, "male"},
 			{"Zhangsan", nil, "male"},
 		},
+	},
+	// 7 8 test exec
+	{
+		sql:         "CREATE a SET m=10",
+		exec:        true,
+		db1Affected: 0,
+		db2Affected: 0,
+	},
+	{
+		sql:         "UPDATE a SET m=10",
+		exec:        true,
+		db1Affected: 0,
+		db2Affected: 1,
 	},
 }
 
@@ -159,11 +195,12 @@ func TestByDb(t *testing.T) {
 		defer db1.Close()
 		defer db2.Close()
 
-		expected := []int{1, 3, 4, 5}
+		// expected visit order
+		expected := []int{1, 3, 4, 5, 7}
 		counter := 0
 
 		err := ByDb(getMqSqls(), db1, db2, false,
-			func(sql string, dsn1Res *DsnRes, dsn2Res *DsnRes) error {
+			func(sql string, dsn1Res DsnRes, dsn2Res DsnRes) error {
 				// corresponding mock query
 				correMp := mqs[expected[counter]]
 
@@ -179,11 +216,11 @@ func TestByDb(t *testing.T) {
 		defer db1.Close()
 		defer db2.Close()
 
-		expected := []int{1, 3, 4}
+		expected := []int{1, 3, 4, 7}
 		counter := 0
 
 		err := ByDb(getMqSqls(), db1, db2, true,
-			func(sql string, dsn1Res *DsnRes, dsn2Res *DsnRes) error {
+			func(sql string, dsn1Res DsnRes, dsn2Res DsnRes) error {
 
 				correMp := mqs[expected[counter]]
 

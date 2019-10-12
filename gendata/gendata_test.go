@@ -126,12 +126,19 @@ func TestByDb(t *testing.T) {
 			return ok
 		})
 
-		res, err := kf["_field_int"]()
-		assert.Equal(t, nil, err)
-		assert.Equal(t, "`v1`", res)
+		assertMustEqual(t, "`v1`", kf["_field_int"])
 
-		res, err = kf["_field_char"]()
-		assert.Equal(t, nil, err)
-		assert.Equal(t, "`v2`", res)
+		assertMustEqual(t, "`v2`", kf["_field_char"])
 	}
+
+	assertMustEqual(t, "`v1`,`v2`", kf["_field_list"])
+
+	assertMustEqual(t, "`v1`", kf["_field_int_list"])
+	assertMustEqual(t, "`v2`", kf["_field_char_list"])
+}
+
+func assertMustEqual(t *testing.T, expected string, kf func() (string, error)) {
+	res, err := kf()
+	assert.Equal(t, nil, err)
+	assert.Equal(t, expected, res)
 }
