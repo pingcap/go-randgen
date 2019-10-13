@@ -469,7 +469,7 @@ func IsCodeBlock(tkn Token) bool {
 	return ok
 }
 
-func NonTerminalNotInMap(pmap map[string]Production, tkn Token) bool {
+func NonTerminalNotInMap(pmap map[string]*Production, tkn Token) bool {
 	non, ok := tkn.(*nonTerminal)
 	if !ok {
 		return false
@@ -477,4 +477,14 @@ func NonTerminalNotInMap(pmap map[string]Production, tkn Token) bool {
 
 	_, ok = pmap[non.ToString()]
 	return !ok
+}
+
+func NonTerminalInMap(pmap map[string]*Production, tkn Token) bool {
+	non, ok := tkn.(*nonTerminal)
+	if !ok {
+		return false
+	}
+
+	_, ok = pmap[non.ToString()]
+	return ok
 }

@@ -1,7 +1,6 @@
 package gendata
 
 import (
-	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -54,13 +53,9 @@ data = {
 	})
 
 	t.Run("gen sqls", func(t *testing.T) {
-		sqls, kf, err := ByConfig(config)
+		sqls, _, err := ByConfig(config)
 		assert.Equal(t, nil, err)
 		assert.Equal(t, config.Tables.numbers * 2, len(sqls))
-		fmt.Println(kf["_digit"]())
-/*		for _, sql := range sqls {
-			fmt.Println(sql)
-		}*/
 	})
 
 }
@@ -88,6 +83,8 @@ func TestByDb(t *testing.T) {
 		tp   string
 	}
 
+	infoOrders := []string{"v1", "v2"}
+
 	infos := map[string]*fieldInfo{
 		"v1":{
 			tp:"int(11)",
@@ -101,8 +98,9 @@ func TestByDb(t *testing.T) {
 	fRows := sqlmock.NewRows([]string{"Field", "Type", "Null",
 		"Key", "Default", "Extra"})
 
-	for name, info := range infos {
-		fRows.AddRow(name, info.tp, "YES", "", nil, "")
+	for _, infoName := range infoOrders {
+		info := infos[infoName]
+		fRows.AddRow(infoName, info.tp, "YES", "", nil, "")
 	}
 
 	mock.ExpectQuery("desc table1").

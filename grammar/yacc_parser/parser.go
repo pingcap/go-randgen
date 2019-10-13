@@ -1,6 +1,7 @@
 package yacc_parser
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"runtime/debug"
@@ -16,8 +17,31 @@ func NewSeq(items []Token) Seq {
 	return Seq{Items:items}
 }
 
+func (s Seq) String() string {
+	buf := &bytes.Buffer{}
+	for i, tkn := range s.Items {
+		if i == 0 {
+			buf.WriteString(tkn.ToString())
+			continue
+		}
+
+		if tkn.HasPreSpace() {
+			buf.WriteRune(' ')
+		}
+		if IsCodeBlock(tkn) {
+			buf.WriteString("{" + tkn.ToString() + "}")
+		} else {
+			buf.WriteString(tkn.ToString())
+		}
+	}
+
+	return buf.String()
+}
+
 // one bnf expression
 type Production struct {
+	// serial Number of this production
+	Number int
 	// left value of bnf expression
 	Head Token
 	// right expression of bnf expression,
@@ -64,10 +88,12 @@ func collectHeadCodeBlocks(nextToken func() (Token, error)) (t Token, cbs []*Cod
 	return t, cbs, nil
 }
 
-func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) {
+func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []*Production, error) {
 	var tkn Token
-	var prods []Production
-	var p Production
+	var prods []*Production
+	p := &Production{}
+	// production serial Number
+	pNumber := 0
 	s := NewSeq(nil)
 	var lastTerm Token
 
@@ -81,6 +107,8 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 	}
 
 	p.Head = t
+	p.Number = pNumber
+	pNumber++
 
 	//
 	// initState -> delimFetchedState -> termFetchedState ->...
@@ -130,7 +158,8 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 				if v.ToString() == ":" {
 					p.Alter = append(p.Alter, NewSeq([]Token{&terminal{val:""}}))
 					prods = append(prods, p)
-					p = Production{Head:s.Items[0]}
+					p = &Production{Head:s.Items[0], Number:pNumber}
+					pNumber++
 					s = NewSeq(nil)
 				}
 				state = delimFetchedState
@@ -161,7 +190,8 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []Production, error) 
 						return nil, nil, fmt.Errorf("%s is not nonterminal \n %s",
 							lastTerm.ToString(), debug.Stack())
 					}
-					p = Production{Head: lastTerm}
+					p = &Production{Head: lastTerm, Number:pNumber}
+					pNumber++
 				}
 				state = delimFetchedState
 			case *nonTerminal, *keyword, *terminal, *CodeBlock:

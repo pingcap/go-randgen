@@ -32,30 +32,31 @@ func TestParse(t *testing.T) {
 			"*yacc_parser.terminal", "*yacc_parser.nonTerminal"},   //Seq 0
 		{"*yacc_parser.nonTerminal", "*yacc_parser.terminal", "*yacc_parser.terminal"},   //Seq1
 		{"*yacc_parser.terminal"},                 // Seq2
-	}, productions[0])
+	}, productions[0], 0)
 
 	assertProduct(t, [][]string{
 		{"*yacc_parser.nonTerminal"},
 		{"*yacc_parser.terminal"},
 		{"*yacc_parser.CodeBlock", "*yacc_parser.nonTerminal", "*yacc_parser.CodeBlock"},
 		{"*yacc_parser.terminal", "*yacc_parser.keyword"},
-	}, productions[1])
+	}, productions[1], 1)
 
 	assertProduct(t, [][]string{
 		{"*yacc_parser.nonTerminal"},
 		{"*yacc_parser.terminal", "*yacc_parser.terminal",
 			"*yacc_parser.terminal", "*yacc_parser.terminal"},
 		{"*yacc_parser.terminal"},
-	}, productions[2])
+	}, productions[2], 2)
 }
 
 func tokenType(tkn Token) string {
 	return fmt.Sprintf("%T", tkn)
 }
 
-func assertProduct(t *testing.T, expect [][]string, real Production) {
+func assertProduct(t *testing.T, expect [][]string, real *Production, expectNum int) {
 	assert.Equal(t, expect[0][0], tokenType(real.Head))
 	assert.Equal(t, len(expect)-1, len(real.Alter))
+	assert.Equal(t, expectNum, real.Number)
 
 	for i := 1; i < len(expect); i++ {
 		s := real.Alter[i-1]
@@ -68,7 +69,7 @@ func assertProduct(t *testing.T, expect [][]string, real Production) {
 }
 
 func TestPaserPrint(t *testing.T) {
-	//t.SkipNow()
+	t.SkipNow()
 	next := Tokenize(&RuneSeq{Runes:[]rune(`sql_statement: simple_statement_or_begin EMPTY ';' 
           opt_end_of_input
 		|simple_statement_or_begin END_OF_INPUT;
@@ -91,6 +92,7 @@ func TestPaserPrint(t *testing.T) {
 		fmt.Println("==========")
 		fmt.Printf("%T\n", p.Head)
 		fmt.Println(p.Head.ToString())
+		fmt.Println(p.Number)
 		fmt.Printf("Alter len: %d\n", len(p.Alter))
 		for _, s := range p.Alter {
 			fmt.Println("---------")

@@ -10,6 +10,7 @@
 *.log
 /go-randgen
 go-randgen-debug
+go-randgen-darwin
 dump/
 out
 gen
