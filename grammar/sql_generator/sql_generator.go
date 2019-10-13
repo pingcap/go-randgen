@@ -53,26 +53,11 @@ type SQLIterator interface {
 	Analyze(n int) ([]*BranchAnalyze, error)
 }
 
-func initProductionMap(productions []yacc_parser.Production) map[string]yacc_parser.Production {
-	// Head string -> production
-	productionMap := make(map[string]yacc_parser.Production)
-	for _, production := range productions {
-		if pm, exist := productionMap[production.Head.ToString()]; exist {
-			pm.Alter = append(pm.Alter, production.Alter...)
-			productionMap[production.Head.ToString()] = pm
-			continue
-		}
-		productionMap[production.Head.ToString()] = production
-	}
-
-	return productionMap
-}
-
 // SQLRandomlyIterator is a iterator of sql generator
 // note that it is not thread safe
 type SQLRandomlyIterator struct {
 	productionName string
-	productionMap  map[string]yacc_parser.Production
+	productionMap  map[string]*yacc_parser.Production
 	keyFunc        gendata.Keyfun
 	luaVM          *lua.LState
 	printBuf       *bytes.Buffer
@@ -128,10 +113,9 @@ func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 // analyze flag is to open root cause analyze feature
 // if debug is true, the iterator will print all paths during generation
 func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
-	productions []yacc_parser.Production,
+	productionMap map[string]*yacc_parser.Production,
 	keyFunc gendata.Keyfun, productionName string, maxRecursive int, analyze bool,
 	debug bool) (SQLIterator, error) {
-	pMap := initProductionMap(productions)
 	l := lua.NewState()
 	// run head code blocks
 	for _, codeblock := range headCodeBlocks {
@@ -146,7 +130,7 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 
 	return &SQLRandomlyIterator{
 		productionName: productionName,
-		productionMap:  pMap,
+		productionMap:  productionMap,
 		keyFunc:        keyFunc,
 		luaVM:          l,
 		printBuf:       pBuf,

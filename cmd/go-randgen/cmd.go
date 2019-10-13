@@ -29,7 +29,7 @@ var outPath string
 
 var rootCmd = &cobra.Command{
 	Use:   "go-randgen",
-	Short: "QA tool for fuzzy test just like mysql go-randgen",
+	Short: "QA tool for fuzzy test just like mysql randgen",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		rand.Seed(int64(seed))
 		return nil
@@ -60,6 +60,7 @@ func initCmd() {
 	rootCmd.AddCommand(newGenDataCmd())
 	rootCmd.AddCommand(newGensqlCmd())
 	rootCmd.AddCommand(newZzCmd())
+	rootCmd.AddCommand(newListenCmd())
 }
 
 func main() {

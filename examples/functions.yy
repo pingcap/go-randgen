@@ -1,15 +1,22 @@
 # port from mariadb randgen
 
+{
+ function field(num)
+     print(string.format("field%d", num))
+ end
+}
+
 query:
     select_or_explain_select
+/*  | select_or_explain_select
   | select_or_explain_select
   | select_or_explain_select
   | select_or_explain_select
   | select_or_explain_select
-  | select_or_explain_select
-  #| prepare_execute
+  | prepare_execute  */
 ;
 
+/*
 prepare_execute:
     # tidb not support `CREATE ... AS ...`
 	# SET @stmt = {print('"')}select{print('"')};
@@ -26,16 +33,18 @@ prepare_execute:
 	EXECUTE stmt USING @a, @b;
 	EXECUTE stmt USING @c, @d;
 	DEALLOCATE PREPARE stmt; DROP TABLE `ps`;
+*/
 
 temporary:
    #| TEMPORARY ; # https://github.com/pingcap/tidb/issues/1248
    ;
 
-explain_extended:
+/*explain_extended:
 	| | | | | | | EXPLAIN extended ;
 
 extended:
 	| EXTENDED ;
+*/
 
 select_or_explain_select:
    #explain_extended select;
@@ -45,8 +54,8 @@ select:
    { num = 0 } SELECT distinct select_list FROM _table where group_by_having_order_by_limit;
 
 select_list:
-   select_item AS { num=num+1; print(string.format("field%d", num)) } |
-   select_item AS { num=num+1; print(string.format("field%d", num)) } , select_list ;
+   select_item AS { num=num+1; field(num) } |
+   select_item AS { num=num+1; field(num) } , select_list ;
 
 distinct:
    | DISTINCT ;
@@ -145,8 +154,8 @@ information_func:
 	FOUND_ROWS() |
 	LAST_INSERT_ID() |
 	ROW_COUNT() |
-	SESSION_USER() | SYSTEM_USER() | USER() |
-	VERSION()
+	#SESSION_USER() | SYSTEM_USER() | USER() |
+	#VERSION()
 ;
 
 control_flow_func:
