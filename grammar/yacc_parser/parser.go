@@ -12,8 +12,8 @@ type Seq struct {
 	MaxHeap  Heap
 }
 
-func NewSeq(items []Token) Seq {
-	return Seq{Items:items}
+func NewSeq(items []Token) *Seq {
+	return &Seq{Items:items}
 }
 
 // one bnf expression
@@ -22,7 +22,7 @@ type Production struct {
 	Head Token
 	// right expression of bnf expression,
 	// every Seq represents a branch of this expression
-	Alter []Seq
+	Alter []*Seq
 }
 
 const (
