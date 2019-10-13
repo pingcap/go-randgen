@@ -19,7 +19,7 @@ type BranchAnalyze struct {
 	// confilct number of this branch
 	Conflicts int
 	// the content expanded by this branch
-	Content  string
+	Content string
 	// one of confict sqls
 	ExampleSql string
 }
@@ -27,12 +27,13 @@ type BranchAnalyze struct {
 // return false means normal stop visit
 type SqlVisitor func(sql string) bool
 
-func MaxTimeVisitor(f func(i int, sql string), max int) SqlVisitor {
+// visit fixed times to get `times` sqls
+func FixedTimesVisitor(f func(i int, sql string), times int) SqlVisitor {
 	i := 0
 	return func(sql string) bool {
 		f(i, sql)
 		i++
-		if i == max {
+		if i == times {
 			return false
 		}
 		return true
@@ -42,7 +43,6 @@ func MaxTimeVisitor(f func(i int, sql string), max int) SqlVisitor {
 // SQLIterator is a iterator interface of sql generator
 // SQLIterator is not thread safe
 type SQLIterator interface {
-
 	// Next returns next sql case in iterator
 	Visit(visitor SqlVisitor) error
 
@@ -129,7 +129,7 @@ func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 // if debug is true, the iterator will print all paths during generation
 func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	productions []yacc_parser.Production,
-	keyFunc gendata.Keyfun, productionName string, maxRecursive int,
+	keyFunc gendata.Keyfun, productionName string, maxRecursive int, analyze bool,
 	debug bool) (SQLIterator, error) {
 	pMap := initProductionMap(productions)
 	l := lua.NewState()
@@ -151,6 +151,7 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 		luaVM:          l,
 		printBuf:       pBuf,
 		maxRecursive:   maxRecursive,
+		analyze:        analyze,
 		debug:          debug,
 	}, nil
 }

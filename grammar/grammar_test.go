@@ -121,10 +121,10 @@ query:
 
 		t.Run(c.name, func(t *testing.T) {
 			iterator, err := NewIter(c.yy, "query", 5,
-				c.keyFun, false)
+				c.keyFun, false, false)
 			assert.Equal(t, nil, err)
 
-			iterator.Visit(sql_generator.MaxTimeVisitor(func(i int, sql string) {
+			iterator.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
 				if c.expected != nil {
 					assert.Condition(t, func() (success bool) {
 						return c.expected(sql)
@@ -149,7 +149,7 @@ select:
    SELECT select
 `
 	iterator, err := NewIter(recurYy, "query", 5,
-		nil, false)
+		nil, false, false)
 	assert.Equal(t, nil, err)
 
 	err = iterator.Visit(func(sql string) bool {
@@ -188,10 +188,10 @@ func TestByYySimplePrint(t *testing.T) {
 		"_field": func() (string, error) {
 			return "ffff", nil
 		},
-	}, false)
+	}, false, false)
 	assert.Equal(t, nil, err)
 
-	iter.Visit(sql_generator.MaxTimeVisitor(func(_ int, sql string) {
+	iter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		fmt.Println(sql)
 	}, 10))
 }

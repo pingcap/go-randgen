@@ -111,7 +111,7 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 
 	sqlIter := getIter(keyf)
 
-	err := sqlIter.Visit(sql_generator.MaxTimeVisitor(func(_ int, sql string) {
+	err := sqlIter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		randomSqls = append(randomSqls, sql)
 	}, queries))
 
@@ -125,7 +125,7 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 func getIter(keyf gendata.Keyfun) sql_generator.SQLIterator {
 	yy := loadYy()
 
-	iterator, err := grammar.NewIter(yy, root, maxRecursive, keyf, debug)
+	iterator, err := grammar.NewIter(yy, root, maxRecursive, keyf, analyze > 0, debug)
 	if err != nil {
 		log.Fatalln("Fatal Error: " + err.Error())
 	}
