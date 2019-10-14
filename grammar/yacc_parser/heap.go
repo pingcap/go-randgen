@@ -1,7 +1,11 @@
 package yacc_parser
 
+type PendingPath struct {
+	// product result in this branch
+	Content string
+	TheSeq  *Seq
+}
+
 type Heap interface {
-	// conctent is the extended branch
-	// sql is the related sql
-	Push(content string, sql *string)
+	Push(content string, sql string)
 }

@@ -112,8 +112,8 @@ query:
 					return "ffff", nil
 				},
 			},
-			num:10,
-			simpleExp:"A aaa_tabl B ffff",
+			num:       10,
+			simpleExp: "A aaa_tabl B ffff",
 		},
 	}
 
@@ -157,7 +157,7 @@ select:
 	})
 
 	assert.Equal(t,
-		"`select` expression recursive num exceed max loop back 5\n [query select select select select select]",
+		"recursive num exceed max loop back 5\n [query select select select select select]",
 		err.Error())
 }
 
@@ -194,4 +194,28 @@ func TestByYySimplePrint(t *testing.T) {
 	iter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		fmt.Println(sql)
 	}, 10))
+}
+
+var halfRecur = `
+query:
+   select_char
+
+select_char:
+   haha haha select_char
+   | SELECT * FROM mmm
+`
+
+func TestRecur(t *testing.T) {
+	iter, err := NewIter(halfRecur, "query", 1, nil, false, false)
+	assert.Equal(t, nil, err)
+
+	counter := 0
+	err = iter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
+		assert.Equal(t, counter, i)
+		counter++
+
+		assert.Equal(t, "SELECT * FROM mmm", sql)
+	}, 100))
+
+	assert.Equal(t, nil, err)
 }

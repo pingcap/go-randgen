@@ -8,7 +8,7 @@ import (
 )
 
 type Token interface {
-	ToString() string
+	OriginString() string
 	HasPreSpace() bool
 }
 
@@ -22,7 +22,7 @@ func (*eof) HasPreSpace() bool {
 	return false
 }
 
-func (*eof) ToString() string {
+func (*eof) OriginString() string {
 	return "EOF"
 }
 
@@ -35,7 +35,7 @@ func (op *operator) HasPreSpace() bool {
 	return false
 }
 
-func (op *operator) ToString() string {
+func (op *operator) OriginString() string {
 	return op.val
 }
 
@@ -48,7 +48,7 @@ func (kw *keyword) HasPreSpace() bool {
 	return kw.commonAttr.hasPreSpace
 }
 
-func (kw *keyword) ToString() string {
+func (kw *keyword) OriginString() string {
 	return kw.val
 }
 
@@ -61,7 +61,7 @@ func (nt *nonTerminal) HasPreSpace() bool {
 	return nt.commonAttr.hasPreSpace
 }
 
-func (nt *nonTerminal) ToString() string {
+func (nt *nonTerminal) OriginString() string {
 	return nt.val
 }
 
@@ -74,7 +74,7 @@ func (t *terminal) HasPreSpace() bool {
 	return t.commonAttr.hasPreSpace
 }
 
-func (t *terminal) ToString() string {
+func (t *terminal) OriginString() string {
 	return t.val
 }
 
@@ -86,7 +86,7 @@ func (c *comment) HasPreSpace() bool {
 	return false
 }
 
-func (c *comment) ToString() string {
+func (c *comment) OriginString() string {
 	return c.val
 }
 
@@ -99,7 +99,7 @@ func (c *CodeBlock) HasPreSpace() bool {
 	return c.commonAttr.hasPreSpace
 }
 
-func (c *CodeBlock) ToString() string {
+func (c *CodeBlock) OriginString() string {
 	return c.val
 }
 
@@ -349,7 +349,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 					stack.Pop()
 					if stack.Empty() {
 						return &CodeBlock{common,
-							string(reader.Runes[lookBackPos+1 : reader.Pos-1])}, nil
+							string(reader.Slice(lookBackPos))}, nil
 					}
 				} else if r == '\'' || r == '"' {
 					stack.Push(r)
@@ -475,7 +475,7 @@ func NonTerminalNotInMap(pmap map[string]*Production, tkn Token) bool {
 		return false
 	}
 
-	_, ok = pmap[non.ToString()]
+	_, ok = pmap[non.OriginString()]
 	return !ok
 }
 
@@ -485,6 +485,6 @@ func NonTerminalInMap(pmap map[string]*Production, tkn Token) bool {
 		return false
 	}
 
-	_, ok = pmap[non.ToString()]
+	_, ok = pmap[non.OriginString()]
 	return ok
 }

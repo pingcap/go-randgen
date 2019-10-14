@@ -9,30 +9,27 @@ import (
 
 // token sequence of one branch
 type Seq struct {
-	Items []Token
-	MaxHeap  Heap
+	Items   []Token
+	MaxHeap Heap
 }
 
 func NewSeq(items []Token) *Seq {
-	return &Seq{Items:items}
+	return &Seq{Items: items}
 }
 
 func (s Seq) String() string {
 	buf := &bytes.Buffer{}
 	for i, tkn := range s.Items {
 		if i == 0 {
-			buf.WriteString(tkn.ToString())
+			buf.WriteString(tkn.OriginString())
 			continue
 		}
 
 		if tkn.HasPreSpace() {
 			buf.WriteRune(' ')
 		}
-		if IsCodeBlock(tkn) {
-			buf.WriteString("{" + tkn.ToString() + "}")
-		} else {
-			buf.WriteString(tkn.ToString())
-		}
+
+		buf.WriteString(tkn.OriginString())
 	}
 
 	return buf.String()
@@ -47,6 +44,8 @@ type Production struct {
 	// right expression of bnf expression,
 	// every Seq represents a branch of this expression
 	Alter []*Seq
+	// for round roundRoubine select
+	selectIndex int
 }
 
 const (
@@ -57,7 +56,7 @@ const (
 	endState             = 4
 )
 
-func skipComment(nextToken func() (Token, error)) (t Token, err error)  {
+func skipComment(nextToken func() (Token, error)) (t Token, err error) {
 	for {
 		t, err = nextToken()
 		if err != nil {
@@ -70,7 +69,7 @@ func skipComment(nextToken func() (Token, error)) (t Token, err error)  {
 	}
 }
 
-func collectHeadCodeBlocks(nextToken func() (Token, error)) (t Token, cbs []*CodeBlock, err error)  {
+func collectHeadCodeBlocks(nextToken func() (Token, error)) (t Token, cbs []*CodeBlock, err error) {
 	cbs = make([]*CodeBlock, 0)
 	for {
 		t, err = skipComment(nextToken)
@@ -103,7 +102,7 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []*Production, error)
 		return nil, nil, err
 	}
 	if !IsTknNonTerminal(t) {
-		return nil, nil, fmt.Errorf("%s is not nonterminal", t.ToString())
+		return nil, nil, fmt.Errorf("%s is not nonterminal", t.OriginString())
 	}
 
 	p.Head = t
@@ -120,24 +119,24 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []*Production, error)
 		}
 		switch state {
 		case initState:
-			if tkn.ToString() != ":" {
+			if tkn.OriginString() != ":" {
 				return nil, nil, errors.New("expect ':'")
 			}
 			state = delimFetchedState
 		case delimFetchedState:
 			if isEOF(tkn) {
-				s.Items = append(s.Items, &terminal{val:""})
+				s.Items = append(s.Items, &terminal{val: ""})
 				p.Alter = append(p.Alter, s)
 				prods = append(prods, p)
 				state = endState
 				continue
 			}
-			if tkn.ToString() == "|" || isEOF(tkn) {
+			if tkn.OriginString() == "|" || isEOF(tkn) {
 				// multi delimiter will have empty alter
-				s.Items = append(s.Items, &terminal{val:""})
+				s.Items = append(s.Items, &terminal{val: ""})
 				p.Alter = append(p.Alter, s)
 				s = NewSeq(nil)
-			} else if tkn.ToString() == ":" {
+			} else if tkn.OriginString() == ":" {
 				continue
 			} else {
 				state = termFetchedState
@@ -151,14 +150,14 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []*Production, error)
 				prods = append(prods, p)
 				state = endState
 			case *operator:
-				if v.ToString() == "|" {
+				if v.OriginString() == "|" {
 					p.Alter = append(p.Alter, s)
 					s = NewSeq(nil)
 				}
-				if v.ToString() == ":" {
-					p.Alter = append(p.Alter, NewSeq([]Token{&terminal{val:""}}))
+				if v.OriginString() == ":" {
+					p.Alter = append(p.Alter, NewSeq([]Token{&terminal{val: ""}}))
 					prods = append(prods, p)
-					p = &Production{Head:s.Items[0], Number:pNumber}
+					p = &Production{Head: s.Items[0], Number: pNumber}
 					pNumber++
 					s = NewSeq(nil)
 				}
@@ -188,9 +187,9 @@ func Parse(nextToken func() (Token, error)) ([]*CodeBlock, []*Production, error)
 					prods = append(prods, p)
 					if !IsTknNonTerminal(lastTerm) {
 						return nil, nil, fmt.Errorf("%s is not nonterminal \n %s",
-							lastTerm.ToString(), debug.Stack())
+							lastTerm.OriginString(), debug.Stack())
 					}
-					p = &Production{Head: lastTerm, Number:pNumber}
+					p = &Production{Head: lastTerm, Number: pNumber}
 					pNumber++
 				}
 				state = delimFetchedState

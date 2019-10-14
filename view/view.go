@@ -53,7 +53,7 @@ func productionToJson(productions []*yacc_parser.Production,
 			fanout := newArraySet()
 			for _, item := range seq.Items {
 				if yacc_parser.NonTerminalInMap(pMap, item) {
-					fanout.add(pMap[item.ToString()].Number)
+					fanout.add(pMap[item.OriginString()].Number)
 				}
 			}
 
@@ -62,7 +62,7 @@ func productionToJson(productions []*yacc_parser.Production,
 
 		pViews = append(pViews, &ProductionView{
 			Number: production.Number,
-			Head:   production.Head.ToString(),
+			Head:   production.Head.OriginString(),
 			Alter:  seqViews,
 		})
 	}

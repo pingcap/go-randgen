@@ -29,12 +29,12 @@ func initProductionMap(productions []*yacc_parser.Production) map[string]*yacc_p
 	// Head string -> production
 	productionMap := make(map[string]*yacc_parser.Production)
 	for _, production := range productions {
-		if pm, exist := productionMap[production.Head.ToString()]; exist {
+		if pm, exist := productionMap[production.Head.OriginString()]; exist {
 			pm.Alter = append(pm.Alter, production.Alter...)
-			productionMap[production.Head.ToString()] = pm
+			productionMap[production.Head.OriginString()] = pm
 			continue
 		}
-		productionMap[production.Head.ToString()] = production
+		productionMap[production.Head.OriginString()] = production
 	}
 
 	return productionMap

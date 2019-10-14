@@ -91,14 +91,14 @@ func TestPaserPrint(t *testing.T) {
 	for _, p := range productions {
 		fmt.Println("==========")
 		fmt.Printf("%T\n", p.Head)
-		fmt.Println(p.Head.ToString())
+		fmt.Println(p.Head.OriginString())
 		fmt.Println(p.Number)
 		fmt.Printf("Alter len: %d\n", len(p.Alter))
 		for _, s := range p.Alter {
 			fmt.Println("---------")
 			for _, t := range s.Items {
 				fmt.Printf("%T\n", t)
-				fmt.Println(t.ToString())
+				fmt.Println(t.OriginString())
 			}
 		}
 	}

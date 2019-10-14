@@ -11,7 +11,7 @@ test:
 	go test -count=1 ./...
 
 debug:
-	go build -o go-randgen-debug -gcflags "-N -l" cmd/randgen/*.go
+	go build -o go-randgen-debug -gcflags "-N -l" cmd/go-randgen/*.go
 
 
 darwin: # cross compile to mac
