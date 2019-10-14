@@ -20,6 +20,7 @@ import (
 var dsn1 string
 var dsn2 string
 var order bool
+var analyze int
 var dumpDir string
 
 func newExecCmd() *cobra.Command {
@@ -49,6 +50,9 @@ func newExecCmd() *cobra.Command {
 		false, "compare sql result without order")
 	execCmd.Flags().StringVar(&dumpDir, "dump",
 		"dump", "inconsistent sqls dump directory")
+	execCmd.Flags().IntVar(&analyze, "analyze", 0,
+		"print root bug report after sqls exec over," +
+		" 0 means stop it, n(n>0) means print top n root cause")
 
 	return execCmd
 }
@@ -118,6 +122,13 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 	}
 }
 
+const analyzeTemp = `%s : %d : %d : %s
+
+example sql:
+
+%s
+`
+
 func execAction(cmd *cobra.Command, args []string) {
 	if isDirExist(dumpDir) {
 		log.Fatalln("Fatal Error: dump directory already exist")
@@ -173,15 +184,42 @@ func execAction(cmd *cobra.Command, args []string) {
 	}
 
 	sqlIter := getIter(keyf)
-	err = sqlIter.Visit(sql_generator.MaxTimeVisitor(func(_ int, sql string) {
+	err = sqlIter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
 		if !consistent {
+			if analyze > 0 {sqlIter.PushInPathHeap(sql)}
 			visitor(sql, dsn1Res, dsn2Res)
 		}
 	}, queries))
 
 	if err != nil {
 		log.Fatalf("Fatal Error: %v \n", err)
+	}
+
+	// print analyze info
+	if analyze > 0 {
+		infos, err := sqlIter.Analyze(analyze)
+		if err != nil {
+			log.Fatalf("analyze fail %v\n", err)
+		}
+
+		for _, info := range infos {
+			fmt.Printf(analyzeTemp, info.NonTerminal,
+				info.Branch, info.Conflicts, info.Content, info.ExampleSql)
+		}
+	}
+
+	// print analyze info
+	if analyze > 0 {
+		infos, err := sqlIter.Analyze(analyze)
+		if err != nil {
+			log.Fatalf("analyze fail %v\n", err)
+		}
+
+		for _, info := range infos {
+			fmt.Printf("%s : %d : %d\n", info.NonTerminal,
+				info.Branch, info.Conflicts)
+		}
 	}
 
 	log.Println("dump ok")

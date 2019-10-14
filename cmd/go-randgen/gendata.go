@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/spf13/cobra"
@@ -8,15 +9,15 @@ import (
 )
 
 
-var gendataDsn string
+var gendataDsns []string
 
 func newGenDataCmd() *cobra.Command {
 	gendataCmd := &cobra.Command{
 		Use:   "gendata",
 		Short: "generate data in specified db by zz",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if gendataDsn == "" {
-				return errors.New("dsn are required")
+			if len(gendataDsns) == 0 {
+				return errors.New("At least one dsn are required")
 			}
 
 			return nil
@@ -24,7 +25,7 @@ func newGenDataCmd() *cobra.Command {
 		Run: gendataAction,
 	}
 
-	gendataCmd.Flags().StringVar(&gendataDsn, "dsn", "", "specified db to generate data by zz")
+	gendataCmd.Flags().StringSliceVar(&gendataDsns, "dsns", nil, "specified dbs to generate data by zz")
 
 	return gendataCmd
 }
@@ -33,16 +34,20 @@ func newGenDataCmd() *cobra.Command {
 func gendataAction(cmd *cobra.Command, args []string) {
 	ddls, _ := getDdls()
 
-	targetDb, err := compare.OpenDBWithRetry("mysql", gendataDsn)
-	if err != nil {
-		log.Fatalf("connect dsn1 %s error %v\n", gendataDsn, err)
+	targetDbs := make([]*sql.DB, 0, len(gendataDsns))
+	for _, dsn := range gendataDsns {
+		targetDb, err := compare.OpenDBWithRetry("mysql", dsn)
+		if err != nil {
+			log.Fatalf("connect dsn1 %s error %v\n", dsn, err)
+		}
+		targetDbs = append(targetDbs, targetDb)
 	}
 
-	errSql, err := compare.ExecSqlsInDbs(ddls, targetDb)
+	errSql, err := compare.ExecSqlsInDbs(ddls, targetDbs...)
 	if err != nil {
 		log.Printf("Fatal Error: data prepare ddl exec error %v\n", err)
 		log.Fatalln(errSql)
 	}
 
-	log.Printf("generate data in %s ok\n", gendataDsn)
+	log.Printf("generate data in:\n %v ok\n", gendataDsns)
 }

@@ -51,8 +51,8 @@ a muti line comment
 		},
 		{
 			`a: m dd {a = 1;b="aaa"; print(m)} ddd | haha {a = 2 * a; print(a)} nana`,
-			[]string{"a", ":", "m", "dd", `a = 1;b="aaa"; print(m)`, "ddd", "|",
-				"haha", "a = 2 * a; print(a)", "nana"},
+			[]string{"a", ":", "m", "dd", `{a = 1;b="aaa"; print(m)}`, "ddd", "|",
+				"haha", "{a = 2 * a; print(a)}", "nana"},
 		},
 		{
 			`query: select @A := 'sdwe'`,
@@ -84,7 +84,7 @@ arr={4, 6, 'undef'}
 
 t1: c | o | p
 `,
-			[]string{"i=1\nf1={a = 1, b = 2}\nf2={a = 2, b = 3}\narr={4, 6, 'undef'}\n",
+			[]string{"{i=1\nf1={a = 1, b = 2}\nf2={a = 2, b = 3}\narr={4, 6, 'undef'}\n}",
 				"t1", ":", "c", "|", "o", "|", "p"},
 		},
 		{
@@ -103,15 +103,15 @@ test:
 		},
 		{
 			`{print("{")} m {print("}")}`,
-			[]string{`print("{")`, `m`, `print("}")`},
+			[]string{`{print("{")}`, `m`, `{print("}")}`},
 		},
 		{
 			`{print("\"{");print('\'}')}llll`,
-			[]string{`print("\"{");print('\'}')`, `llll`},
+			[]string{`{print("\"{");print('\'}')}`, `llll`},
 		},
 		{
 			`{print('"')}select{print('"')}`,
-			[]string{`print('"')`, `select`, `print('"')`},
+			[]string{`{print('"')}`, `select`, `{print('"')}`},
 		},
 		{
 			`dsd /* dd ttee `,
@@ -131,7 +131,7 @@ test:
 asd
 }
 `,
-			[]string{"\n-- {\n--[==[\n}\n]==]\nasd\n"},
+			[]string{"{\n-- {\n--[==[\n}\n]==]\nasd\n}"},
 		},
 	}
 
@@ -155,7 +155,7 @@ func withTokenizeResult(t *testing.T, origin string, visitor func(index int, tkn
 		if isEOF(tkn) {
 			break
 		}
-		visitor(i, tkn.ToString())
+		visitor(i, tkn.OriginString())
 	}
 }
 
@@ -194,7 +194,7 @@ asd
 
 		fmt.Println("=========")
 		fmt.Printf("%T\n", tkn)
-		fmt.Println(tkn.ToString())
+		fmt.Println(tkn.OriginString())
 
 		if isEOF(tkn) {
 			break

@@ -29,7 +29,7 @@ var outPath string
 
 var rootCmd = &cobra.Command{
 	Use:   "go-randgen",
-	Short: "QA tool for fuzzy test just like mysql go-randgen",
+	Short: "QA tool for fuzzy test just like mysql randgen",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		rand.Seed(int64(seed))
 		return nil
@@ -60,6 +60,7 @@ func initCmd() {
 	rootCmd.AddCommand(newGenDataCmd())
 	rootCmd.AddCommand(newGensqlCmd())
 	rootCmd.AddCommand(newZzCmd())
+	rootCmd.AddCommand(newListenCmd())
 }
 
 func main() {
@@ -111,7 +112,7 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 
 	sqlIter := getIter(keyf)
 
-	err := sqlIter.Visit(sql_generator.MaxTimeVisitor(func(_ int, sql string) {
+	err := sqlIter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		randomSqls = append(randomSqls, sql)
 	}, queries))
 
@@ -125,7 +126,7 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 func getIter(keyf gendata.Keyfun) sql_generator.SQLIterator {
 	yy := loadYy()
 
-	iterator, err := grammar.NewIter(yy, root, maxRecursive, keyf, debug)
+	iterator, err := grammar.NewIter(yy, root, maxRecursive, keyf, analyze > 0, debug)
 	if err != nil {
 		log.Fatalln("Fatal Error: " + err.Error())
 	}

@@ -1,4 +1,6 @@
-/* innerjoin sub query and update sub query */
+/* innerjoin sub query and update sub query
+./go-randgen gentest -Y examples/subquery_test.yy --maxrecur 100
+*/
 
 query:
     update | select
@@ -19,7 +21,7 @@ select_all:
     | SELECT * FROM _table
 
 select_char:
-    SELECT _field_char FROM (select) inner_join
+    SELECT _field_char FROM (select_char) inner_join
     WHERE _field_char in (select_char)
     | SELECT _field_char FROM _table
 
