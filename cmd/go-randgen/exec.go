@@ -187,7 +187,7 @@ func execAction(cmd *cobra.Command, args []string) {
 	err = sqlIter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
 		if !consistent {
-			sqlIter.PushInPathHeap(sql)
+			if analyze > 0 {sqlIter.PushInPathHeap(sql)}
 			visitor(sql, dsn1Res, dsn2Res)
 		}
 	}, queries))

@@ -24,6 +24,6 @@ func TestGenData(t *testing.T) {
 	t.Run("test empty dsn", func(t *testing.T) {
 		reInitCmd()
 		_, err := executeCommand(rootCmd, "gendata")
-		assert.Equal(t, "dsn are required", err.Error())
+		assert.Equal(t, "At least one dsn are required", err.Error())
 	})
 }

@@ -46,7 +46,7 @@ type SQLIterator interface {
 	// Next returns next sql case in iterator
 	Visit(visitor SqlVisitor) error
 
-	// push the lastest sql from Next into the analyze heap
+	// push the lastest generated sql into the analyze heap, you should call it in Visit callback
 	PushInPathHeap(sql string)
 
 	// return the top n branch in the analyzed sql
