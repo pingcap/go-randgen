@@ -352,6 +352,9 @@ The keywords to get table names and field names:
  - `_field`: randomly get a field name from generated fields
  - `_field_int`: randomly get a field from generated int fields
  - `_field_char`: randomly get a field from generated char and varchar fields
+ - `_field_list`: get all field split by comma in the table
+ - `_field_int_list`: get all int field split by comma in the table
+ - `_field_char_list`: get all char field split by comma in the table
  
 Some sugars to randomly generate data(it will generate double quotes automatically in character related data):
 

@@ -318,6 +318,9 @@ select1
  - `_field`: 从生成的字段中随机选择一个
  - `_field_int`: 从整型字段中随机选择一个
  - `_field_char`: 从 char 和 varchar 类型字段中随机选择一个
+ - `_field_list`: 获取全部字段，以逗号分隔
+ - `_field_int_list`: 获取全部整型字段，以逗号分隔
+ - `_field_char_list`: 获取全部字符型字段，以逗号分隔
  
 随机生成数据的一些糖 (字符相关的会在两边自动生成双引号):
 
