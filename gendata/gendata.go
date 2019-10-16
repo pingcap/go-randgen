@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"github.com/pingcap/errors"
 	"github.com/pingcap/go-randgen/gendata/generators"
 	"github.com/pingcap/go-randgen/resource"
-	"github.com/pingcap/errors"
 	"github.com/yuin/gopher-lua"
 	"math/rand"
 	"strconv"
@@ -175,6 +175,8 @@ const (
 var fClass = map[string]int{
 	"char":      fChar,
 	"varchar":   fChar,
+	"binary":    fChar,
+	"varbinary": fChar,
 	"integer":   fInt,
 	"int":       fInt,
 	"smallint":  fInt,
@@ -208,6 +210,7 @@ func joinFields(fields []*fieldExec) string {
 func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 	fieldsInt := make([]*fieldExec, 0)
 	fieldsChar := make([]*fieldExec, 0)
+
 	for _, fieldExec := range fields {
 		if class, ok := fClass[fieldExec.dType()]; ok {
 			switch class {

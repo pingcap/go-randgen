@@ -1,9 +1,12 @@
 package compare
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"runtime"
 	"testing"
 )
 
@@ -97,6 +100,55 @@ func TestQuery(t *testing.T) {
 	assert.Equal(t, true, r1.NonOrderEqualTo(r2))
 	assert.Equal(t, false, r1.BytesEqualTo(r2))
 }
+
+func getMockDb(t *testing.T, expects []string) *sql.DB {
+	db, mock, err := sqlmock.New()
+	assert.Equal(t, nil, err)
+	for i, expect := range expects {
+		if i == 10 {
+			mock.ExpectExec(expect).WillReturnError(errors.New("mock err"))
+		} else {
+			mock.ExpectExec(expect).WillReturnResult(sqlmock.NewResult(1, 1))
+		}
+	}
+
+	return db
+}
+
+func getSql(num int) []string {
+	sqls := make([]string, 0, num)
+	for i := 0; i < num; i++ {
+		sqls = append(sqls, fmt.Sprintf("exec %d", i))
+	}
+	return sqls
+}
+
+func TestExecSqlsInDbs(t *testing.T) {
+
+	t.Run("success case", func(t *testing.T) {
+		expectSqls := getSql(9)
+		mockdb0 := getMockDb(t, expectSqls)
+		mockdb1 := getMockDb(t, expectSqls)
+		_, err := ExecSqlsInDbs(expectSqls, mockdb0, mockdb1)
+		assert.Equal(t, nil, err)
+	})
+
+	t.Run("fail case", func(t *testing.T) {
+		expectSqls := getSql(30)
+		mockdb0 := getMockDb(t, expectSqls)
+		mockdb1 := getMockDb(t, expectSqls)
+		goroutineNum := runtime.NumGoroutine()
+		sql, err := ExecSqlsInDbs(expectSqls, mockdb0, mockdb1)
+		assert.Equal(t, "mock err", err.Error())
+		assert.Equal(t, "exec 10", sql)
+		// test  gorountine leak
+		assert.Equal(t, goroutineNum, runtime.NumGoroutine())
+	})
+
+}
+
+
+
 
 func TestQueryMysql(t *testing.T)  {
 	t.SkipNow()

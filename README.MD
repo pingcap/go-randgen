@@ -71,12 +71,13 @@ the detail of yy syntax to see following *Grammar Guide*.
 
 ### gendata
 
-generate table structrue and data in user specified dsn 
+generate table structrue and data in user specified dsns 
 according to user specified or built-in zz file.
 
 ```bash
 # generate table structure and data specified by zz in specified dsn
-./go-randgen gendata --dsn "root:@tcp(127.0.0.1:3306)/randgen"
+# dsns are split by comma
+./go-randgen gendata --dsns "root:@tcp(127.0.0.1:3306)/randgen,root:@tcp(127.0.0.1:4000)/randgen"
 ```
 
 ### gensql

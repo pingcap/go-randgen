@@ -36,7 +36,7 @@ make all
  3. 兼容 mysql randgen 的 yy 文件的语法，只要在 yy 文件中没有插入 perl 代码，就可以直接拿过来运行
  4. 和 mysql randgen 支持嵌入 perl 代码类似，go randgen 支持嵌入 lua 代码
  5. 纯 Go 实现，设计得非常灵活，非常易于 Hack
- 6. 除了 cmdb 包下面的函数，其他包对外暴露的函数的实现全部是无状态，如果需要可以完全当成一个库来调用
+ 6. 除了 cmd 包下面的函数，其他包对外暴露的函数的实现全部是无状态，如果需要可以完全当成一个库来调用
 
 ## Quick start
 
@@ -67,11 +67,12 @@ yy 文件的具体写法也见后面的语法手册
 
 ### gendata
 
-根据指定的 zz，往指定的 dsn 中灌入相应数据
+根据指定的 zz，往指定的 dsns 中灌入相应数据
 
 ```bash
 # 在指定的 dsn 中灌入内置 zz 文件定义的数据
-./go-randgen gendata --dsn "root:@tcp(127.0.0.1:3306)/randgen"
+# 通过逗号分割多个dsn
+./go-randgen gendata --dsns "root:@tcp(127.0.0.1:3306)/randgen,root:@tcp(127.0.0.1:4000)/randgen"
 ```
 
 ### gensql

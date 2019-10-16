@@ -2,11 +2,13 @@ package compare
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"log"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -269,13 +271,44 @@ func isExec(sql string) bool {
 	return ok
 }
 
+type SqlExecErr struct {
+	sql string
+	err error
+}
+
 func ExecSqlsInDbs(sqls []string, dbs ... *sql.DB) (string, error) {
-	for _, sql := range sqls {
-		for _, db := range dbs {
-			if _, err := db.Exec(sql); err != nil {
-				return sql, err
+	wg := &sync.WaitGroup{}
+	wg.Add(len(dbs))
+
+	errCh := make(chan *SqlExecErr, 1)
+	c, cancel := context.WithCancel(context.Background())
+
+	for _, db := range dbs {
+		go func(db *sql.DB) {
+			defer wg.Done()
+			for _, sqlStr := range sqls {
+				select {
+				case <- c.Done():
+					break
+				default:
+					if _, err := db.Exec(sqlStr); err != nil {
+						cancel()
+						select {
+						case errCh <- &SqlExecErr{sqlStr, err}:
+						default:
+						}
+						break
+					}
+				}
 			}
-		}
+		}(db)
+	}
+
+	wg.Wait()
+	close(errCh)
+	sqlErr := <- errCh
+	if sqlErr != nil {
+		return sqlErr.sql, sqlErr.err
 	}
 
 	return "", nil
