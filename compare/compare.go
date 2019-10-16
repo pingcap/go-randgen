@@ -180,6 +180,10 @@ func ByExec(sql string, db1 *sql.DB, db2 *sql.DB) (consistent bool, dsn1Res DsnR
 		return false, res1, res2
 	}
 
+	if res1.err != nil && res2.err != nil {
+		return true, res1, res2
+	}
+
 	if res1.rowsAffected != res2.rowsAffected {
 		return false, res1, res2
 	}
