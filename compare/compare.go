@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"sync"
 )
 
 type DsnRes interface {
@@ -26,6 +27,11 @@ func (q *QueryDsnRes) String() string {
 	return q.Res.String()
 }
 
+func newQueryDsnRes(db *sql.DB, sql string) *QueryDsnRes {
+	result, err := query(db, sql)
+	return &QueryDsnRes{result, err}
+}
+
 type execDsnRes struct {
 	rowsAffected int64
 	err          error
@@ -37,6 +43,11 @@ func (e *execDsnRes) String() string {
 
 func (e *execDsnRes) Err() error {
 	return e.err
+}
+
+func newExecDsnRes(db *sql.DB, sql string) *execDsnRes {
+	r, err := exec(db, sql)
+	return &execDsnRes{r, err}
 }
 
 type Visitor func(sql string, dsn1Res DsnRes, dsn2Res DsnRes) error
@@ -86,68 +97,98 @@ func BySql(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bool
 
 func ByQuery(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bool, dsn1Res DsnRes,
 	dsn2Res DsnRes) {
-	r1, err1 := query(db1, sql)
-	r2, err2 := query(db2, sql)
 
-	if err1 == driver.ErrBadConn {
-		log.Printf("Error: connection to dsn1 error, %v \n", err1)
+	var res1 *QueryDsnRes
+	var res2 *QueryDsnRes
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		res1 = newQueryDsnRes(db1, sql)
+		wg.Done()
+	}()
+
+	go func() {
+		res2 = newQueryDsnRes(db2, sql)
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	if res1.err == driver.ErrBadConn {
+		log.Printf("Error: connection to dsn1 error, %v \n", res1.err)
 	}
 
-	if err2 == driver.ErrBadConn {
-		log.Printf("Error: connection to dsn2 error, %v \n", err2)
+	if res2.err == driver.ErrBadConn {
+		log.Printf("Error: connection to dsn2 error, %v \n", res2.err)
 	}
 
-	dsn1Res = &QueryDsnRes{r1, err1}
-	dsn2Res = &QueryDsnRes{r2, err2}
-
-	if !errConsistent(err1, err2) {
-		return false, dsn1Res, dsn2Res
+	if !errConsistent(res1.err, res2.err) {
+		return false, res1, res2
 	}
 
 	// err all not nil, think it is consistent without need to compare
-	if err1 != nil && err2 != nil {
-		return true, dsn1Res, dsn2Res
+	if res1.err != nil && res2.err != nil {
+		return true, res1, res2
 	}
 
 	// compare
 	if nonOrder {
-		if !r1.NonOrderEqualTo(r2) {
-			return false, dsn1Res, dsn2Res
+		if !res1.Res.NonOrderEqualTo(res2.Res) {
+			return false, res1, res2
 		}
 	} else {
-		if !r1.BytesEqualTo(r2) {
-			return false, dsn1Res, dsn2Res
+		if !res1.Res.BytesEqualTo(res2.Res) {
+			return false, res1, res2
 		}
 	}
 
-	return true, dsn1Res, dsn2Res
+	return true, res1, res2
 }
 
 func ByExec(sql string, db1 *sql.DB, db2 *sql.DB) (consistent bool, dsn1Res DsnRes,
 	dsn2Res DsnRes) {
-	r1, err1 := exec(db1, sql)
-	r2, err2 := exec(db2, sql)
 
-	if err1 == driver.ErrBadConn {
-		log.Printf("Error: connection to dsn1 error, %v \n", err1)
+	var res1 *execDsnRes
+	var res2 *execDsnRes
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		res1 = newExecDsnRes(db1, sql)
+		wg.Done()
+	}()
+
+	go func() {
+		res2 = newExecDsnRes(db2, sql)
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	if res1.err == driver.ErrBadConn {
+		log.Printf("Error: connection to dsn1 error, %v \n", res1.err)
 	}
 
-	if err2 == driver.ErrBadConn {
-		log.Printf("Error: connection to dsn2 error, %v \n", err2)
+	if res2.err == driver.ErrBadConn {
+		log.Printf("Error: connection to dsn2 error, %v \n", res2.err)
 	}
 
-	dsn1Res = &execDsnRes{r1, err1}
-	dsn2Res = &execDsnRes{r2, err2}
-
-	if !errConsistent(err1, err2) {
-		return false, dsn1Res, dsn2Res
+	if !errConsistent(res1.err, res2.err) {
+		return false, res1, res2
 	}
 
-	if r1 != r2 {
-		return false, dsn1Res, dsn2Res
+	if res1.err != nil && res2.err != nil {
+		return true, res1, res2
 	}
 
-	return true, dsn1Res, dsn2Res
+	if res1.rowsAffected != res2.rowsAffected {
+		return false, res1, res2
+	}
+
+	return true, res1, res2
 }
 
 func errConsistent(err1 error, err2 error) bool {

@@ -1,5 +1,5 @@
 /* innerjoin sub query and update sub query
-./go-randgen gentest -Y examples/subquery_test.yy --maxrecur 100
+./go-randgen gentest -Y examples/subquery_test.yy --maxrecur 30
 */
 
 query:
@@ -23,7 +23,7 @@ select_all:
 select_char:
     SELECT _field_char FROM (select_char) inner_join
     WHERE _field_char in (select_char)
-    | SELECT _field_char FROM _table
+    | SELECT a._field_char FROM (SELECT * FROM _table) a
 
 where:
     WHERE _field_char in (select_char)
