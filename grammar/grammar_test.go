@@ -161,6 +161,30 @@ select:
 		err.Error())
 }
 
+var halfRecur = `
+query:
+   select_char
+
+select_char:
+   haha haha select_char
+   | SELECT * FROM mmm
+`
+
+func TestRecur(t *testing.T) {
+	iter, err := NewIter(halfRecur, "query", 1, nil, false, false)
+	assert.Equal(t, nil, err)
+
+	counter := 0
+	err = iter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
+		assert.Equal(t, counter, i)
+		counter++
+
+		assert.Equal(t, "SELECT * FROM mmm", sql)
+	}, 100))
+
+	assert.Equal(t, nil, err)
+}
+
 const yy = `
 query:
     {if(a==nil) then a = 1 end} select
@@ -193,29 +217,11 @@ func TestByYySimplePrint(t *testing.T) {
 
 	iter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		fmt.Println(sql)
+		for _, pendingTkn := range iter.TknExpanded() {
+			fmt.Println(pendingTkn)
+		}
+		fmt.Println("===============")
 	}, 10))
 }
 
-var halfRecur = `
-query:
-   select_char
 
-select_char:
-   haha haha select_char
-   | SELECT * FROM mmm
-`
-
-func TestRecur(t *testing.T) {
-	iter, err := NewIter(halfRecur, "query", 1, nil, false, false)
-	assert.Equal(t, nil, err)
-
-	counter := 0
-	err = iter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
-		assert.Equal(t, counter, i)
-		counter++
-
-		assert.Equal(t, "SELECT * FROM mmm", sql)
-	}, 100))
-
-	assert.Equal(t, nil, err)
-}
