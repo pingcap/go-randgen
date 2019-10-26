@@ -43,7 +43,7 @@ func FixedTimesVisitor(f func(i int, sql string), times int) SqlVisitor {
 // SQLIterator is a iterator interface of sql generator
 // SQLIterator is not thread safe
 type SQLIterator interface {
-	// Next returns next sql case in iterator
+	// Visit sql cases in iterator
 	Visit(visitor SqlVisitor) error
 
 	// push the lastest generated sql into the analyze heap, you should call it in Visit callback
@@ -51,6 +51,8 @@ type SQLIterator interface {
 
 	// return the top n branch in the analyzed sql
 	Analyze(n int) ([]*BranchAnalyze, error)
+
+	TknExpanded() []*yacc_parser.PendingPath
 }
 
 // SQLRandomlyIterator is a iterator of sql generator
@@ -61,15 +63,20 @@ type SQLRandomlyIterator struct {
 	keyFunc        gendata.Keyfun
 	luaVM          *lua.LState
 	printBuf       *bytes.Buffer
-	pendingPaths   []*yacc_parser.PendingPath
+	// non terminal token and it's expanded content
+	tknExpanded    []*yacc_parser.PendingPath
 	maxRecursive   int
 	analyze        bool
 	debug          bool
 }
 
+func (i *SQLRandomlyIterator) TknExpanded() []*yacc_parser.PendingPath {
+	return i.tknExpanded
+}
+
 // if want to push path analyze in the path heap, you should it in Visit callback
 func (i *SQLRandomlyIterator) PushInPathHeap(sql string) {
-	for _, pending := range i.pendingPaths {
+	for _, pending := range i.tknExpanded {
 		pending.TheSeq.MaxHeap.Push(pending.Content, sql)
 	}
 }
@@ -82,8 +89,8 @@ func (i *SQLRandomlyIterator) Analyze(n int) ([]*BranchAnalyze, error) {
 	return nil, nil
 }
 
-func (i *SQLRandomlyIterator) clearPendingAnalyzes() {
-	i.pendingPaths = nil
+func (i *SQLRandomlyIterator) clearLastTknExpanded() {
+	i.tknExpanded = nil
 }
 
 // visitor sqls generted by the iterator
@@ -91,7 +98,7 @@ func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
 
 	wrapper := func(sql string) bool {
 		res := visitor(sql)
-		i.clearPendingAnalyzes()
+		i.clearLastTknExpanded()
 		return res
 	}
 
@@ -313,7 +320,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 		}
 	}
 
-	i.pendingPaths = append(i.pendingPaths, &yacc_parser.PendingPath{
+	i.tknExpanded = append(i.tknExpanded, &yacc_parser.PendingPath{
 		Content: analyzeBuf.String(),
 		TheSeq:  seqs,
 	})

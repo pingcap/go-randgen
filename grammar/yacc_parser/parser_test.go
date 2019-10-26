@@ -61,6 +61,8 @@ func assertProduct(t *testing.T, expect [][]string, real *Production, expectNum 
 	for i := 1; i < len(expect); i++ {
 		s := real.Alter[i-1]
 		assert.Equal(t, len(expect[i]), len(s.Items))
+		assert.Equal(t, i-1, s.SNumber)
+		assert.Equal(t, expectNum, s.PNumber)
 
 		for i, seqType := range expect[i] {
 			assert.Equal(t, seqType, tokenType(s.Items[i]))
