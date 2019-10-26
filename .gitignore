@@ -11,6 +11,8 @@
 /go-randgen
 go-randgen-debug
 go-randgen-darwin
+cover.out
+coverage.html
 dump/
 out
 gen

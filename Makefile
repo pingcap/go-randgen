@@ -8,7 +8,10 @@ bin:
 	go build -o go-randgen cmd/go-randgen/*.go
 
 test:
-	go test -race -count=1 ./...
+	# close cache by -count=1
+	go test -race -coverprofile=cover.out -count=1 ./...
+	go tool cover -html=cover.out -o coverage.html
+
 
 debug:
 	go build -o go-randgen-debug -gcflags "-N -l" cmd/go-randgen/*.go

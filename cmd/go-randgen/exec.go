@@ -209,19 +209,6 @@ func execAction(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// print analyze info
-	if analyze > 0 {
-		infos, err := sqlIter.Analyze(analyze)
-		if err != nil {
-			log.Fatalf("analyze fail %v\n", err)
-		}
-
-		for _, info := range infos {
-			fmt.Printf("%s : %d : %d\n", info.NonTerminal,
-				info.Branch, info.Conflicts)
-		}
-	}
-
 	log.Println("dump ok")
 }
 
