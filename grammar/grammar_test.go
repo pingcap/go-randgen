@@ -217,11 +217,42 @@ func TestByYySimplePrint(t *testing.T) {
 
 	iter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		fmt.Println(sql)
-		for _, pendingTkn := range iter.TknExpanded() {
-			fmt.Println(pendingTkn)
-		}
 		fmt.Println("===============")
 	}, 10))
+}
+
+func TestPathInfo(t *testing.T) {
+	t.SkipNow()
+	code := `
+query:
+    select
+
+select:
+    SELECT func(value)
+
+func:
+/*    | UPPER
+    | ASCII
+    | CONCAT */
+    | QUOTE
+
+value:
+    1 | 2 | 256 | 23445 | NULL
+`
+	iter ,err := NewIter(code, "query", 5, nil, false, false)
+	assert.Equal(t, nil, err)
+
+	err = iter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
+		fmt.Println(sql)
+		for _, production := range iter.PathInfo().ProductionSet.Productions {
+			fmt.Println(production.Head.OriginString())
+		}
+		for _, seq := range iter.PathInfo().SeqSet.Seqs {
+			fmt.Println(seq.String())
+		}
+		fmt.Println("============")
+	}, 5))
+	assert.Equal(t, nil, err)
 }
 
 

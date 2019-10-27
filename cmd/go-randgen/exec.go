@@ -47,7 +47,7 @@ func newExecCmd() *cobra.Command {
 	execCmd.Flags().StringVar(&dsn1, "dsn1", "", "one of compare mysql dsn")
 	execCmd.Flags().StringVar(&dsn2, "dsn2", "", "another compare mysql dsn")
 	execCmd.Flags().BoolVar(&order, "order",
-		false, "compare sql result without order")
+		false, "compare sql result with order")
 	execCmd.Flags().StringVar(&dumpDir, "dump",
 		"dump", "inconsistent sqls dump directory")
 	execCmd.Flags().IntVar(&analyze, "analyze", 0,

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -231,4 +232,22 @@ func TestByDb(t *testing.T) {
 			})
 		assert.Equal(t, nil, err)
 	})
+}
+
+func TestSimplePrint(t *testing.T)  {
+	t.SkipNow()
+	sql := `SELECT * FROM table_90_utf8_6`
+
+	db1, err := OpenDBWithRetry("mysql", "root:@tcp(127.0.0.1:4000)/randgen")
+	assert.Equal(t, nil, err)
+
+	db2, err := OpenDBWithRetry("mysql", "root:123456@tcp(127.0.0.1:4406)/randgen")
+	assert.Equal(t, nil, err)
+
+	res1 := newQueryDsnRes(db1, sql)
+	res2 := newQueryDsnRes(db2, sql)
+	assert.Equal(t, nil, res1.err)
+	assert.Equal(t, nil, res2.err)
+
+	fmt.Println(res1.Res.NonOrderEqualTo(res2.Res))
 }
