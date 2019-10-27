@@ -52,7 +52,25 @@ type SQLIterator interface {
 	// return the top n branch in the analyzed sql
 	Analyze(n int) ([]*BranchAnalyze, error)
 
-	TknExpanded() []*yacc_parser.PendingPath
+	// you should call it in Visit callback, because it will be deleted after visit the sql
+	PathInfo() *PathInfo
+}
+
+type PathInfo struct {
+	ProductionSet *ProductionSet
+	SeqSet        *SeqSet
+}
+
+func newPathInfo() *PathInfo {
+	return &PathInfo{
+		newProductionSet(),
+		newSeqSet(),
+	}
+}
+
+func (p *PathInfo) clear() {
+	p.ProductionSet.clear()
+	p.SeqSet.clear()
 }
 
 // SQLRandomlyIterator is a iterator of sql generator
@@ -63,22 +81,19 @@ type SQLRandomlyIterator struct {
 	keyFunc        gendata.Keyfun
 	luaVM          *lua.LState
 	printBuf       *bytes.Buffer
-	// non terminal token and it's expanded content
-	tknExpanded    []*yacc_parser.PendingPath
-	maxRecursive   int
-	analyze        bool
-	debug          bool
+	// path info
+	pathInfo     *PathInfo
+	maxRecursive int
+	analyze      bool
+	debug        bool
 }
 
-func (i *SQLRandomlyIterator) TknExpanded() []*yacc_parser.PendingPath {
-	return i.tknExpanded
+func (i *SQLRandomlyIterator) PathInfo() *PathInfo {
+	return i.pathInfo
 }
 
 // if want to push path analyze in the path heap, you should it in Visit callback
 func (i *SQLRandomlyIterator) PushInPathHeap(sql string) {
-	for _, pending := range i.tknExpanded {
-		pending.TheSeq.MaxHeap.Push(pending.Content, sql)
-	}
 }
 
 func (i *SQLRandomlyIterator) Analyze(n int) ([]*BranchAnalyze, error) {
@@ -89,16 +104,12 @@ func (i *SQLRandomlyIterator) Analyze(n int) ([]*BranchAnalyze, error) {
 	return nil, nil
 }
 
-func (i *SQLRandomlyIterator) clearLastTknExpanded() {
-	i.tknExpanded = nil
-}
-
 // visitor sqls generted by the iterator
 func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
 
 	wrapper := func(sql string) bool {
 		res := visitor(sql)
-		i.clearLastTknExpanded()
+		i.pathInfo.clear()
 		return res
 	}
 
@@ -141,7 +152,7 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	l := lua.NewState()
 	// run head code blocks
 	for _, codeblock := range headCodeBlocks {
-		if err := l.DoString(codeblock.OriginString()[1:len(codeblock.OriginString())-1]); err != nil {
+		if err := l.DoString(codeblock.OriginString()[1 : len(codeblock.OriginString())-1]); err != nil {
 			return nil, err
 		}
 	}
@@ -157,6 +168,7 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 		luaVM:          l,
 		printBuf:       pBuf,
 		maxRecursive:   maxRecursive,
+		pathInfo:       newPathInfo(),
 		analyze:        analyze,
 		debug:          debug,
 	}, nil
@@ -187,6 +199,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 	if !exist {
 		return nil, false, fmt.Errorf("Production '%s' not found", productionName)
 	}
+	i.pathInfo.ProductionSet.add(production)
 
 	// check max recursive count
 	recurCounter.enter(productionName)
@@ -217,6 +230,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 	// random an alter
 	selectIndex := rand.Intn(len(selectableSeqs))
 	seqs := selectableSeqs[selectIndex]
+	i.pathInfo.SeqSet.add(seqs)
 	firstWrite := true
 
 	// it will record origin producted sql without interpretation
@@ -279,7 +293,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			}
 
 			// lua code block
-			if err := i.luaVM.DoString(item.OriginString()[1:len(item.OriginString())-1]); err != nil {
+			if err := i.luaVM.DoString(item.OriginString()[1 : len(item.OriginString())-1]); err != nil {
 				log.Printf("lua code `%s`, run fail\n %v\n",
 					item.OriginString(), err)
 				return nil, !firstWrite, err
@@ -319,11 +333,6 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			analyzeBuf.Write(subAnalyBuf.Bytes())
 		}
 	}
-
-	i.tknExpanded = append(i.tknExpanded, &yacc_parser.PendingPath{
-		Content: analyzeBuf.String(),
-		TheSeq:  seqs,
-	})
 
 	return analyzeBuf, !firstWrite, nil
 }

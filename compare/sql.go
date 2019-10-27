@@ -68,6 +68,7 @@ func (s *SqlResult) NonOrderEqualTo(another *SqlResult) bool  {
 
 	for row := range another.Rows {
 		if !s.Contains(row) {
+			fmt.Println(row)
 			return false
 		}
 	}
