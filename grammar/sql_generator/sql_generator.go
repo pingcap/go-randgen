@@ -46,12 +46,6 @@ type SQLIterator interface {
 	// Visit sql cases in iterator
 	Visit(visitor SqlVisitor) error
 
-	// push the lastest generated sql into the analyze heap, you should call it in Visit callback
-	PushInPathHeap(sql string)
-
-	// return the top n branch in the analyzed sql
-	Analyze(n int) ([]*BranchAnalyze, error)
-
 	// you should call it in Visit callback, because it will be deleted after visit the sql
 	PathInfo() *PathInfo
 }
@@ -84,24 +78,11 @@ type SQLRandomlyIterator struct {
 	// path info
 	pathInfo     *PathInfo
 	maxRecursive int
-	analyze      bool
 	debug        bool
 }
 
 func (i *SQLRandomlyIterator) PathInfo() *PathInfo {
 	return i.pathInfo
-}
-
-// if want to push path analyze in the path heap, you should it in Visit callback
-func (i *SQLRandomlyIterator) PushInPathHeap(sql string) {
-}
-
-func (i *SQLRandomlyIterator) Analyze(n int) ([]*BranchAnalyze, error) {
-	if !i.analyze {
-		return nil, errors.New("this iterator not support analyze")
-	}
-
-	return nil, nil
 }
 
 // visitor sqls generted by the iterator
@@ -116,7 +97,7 @@ func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
 	sqlBuffer := &bytes.Buffer{}
 
 	for {
-		_, _, err := i.generateSQLRandomly(i.productionName, newLinkedMap(), sqlBuffer,
+		_, err := i.generateSQLRandomly(i.productionName, newLinkedMap(), sqlBuffer,
 			false, wrapper)
 		if err != nil && err != normalStop {
 			return err
@@ -147,7 +128,7 @@ func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 // if debug is true, the iterator will print all paths during generation
 func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	productionMap map[string]*yacc_parser.Production,
-	keyFunc gendata.Keyfun, productionName string, maxRecursive int, analyze bool,
+	keyFunc gendata.Keyfun, productionName string, maxRecursive int,
 	debug bool) (SQLIterator, error) {
 	l := lua.NewState()
 	// run head code blocks
@@ -169,7 +150,6 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 		printBuf:       pBuf,
 		maxRecursive:   maxRecursive,
 		pathInfo:       newPathInfo(),
-		analyze:        analyze,
 		debug:          debug,
 	}, nil
 }
@@ -193,11 +173,11 @@ func willRecursive(seq *yacc_parser.Seq, set map[string]bool) bool {
 
 func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 	recurCounter *linkedMap, sqlBuffer *bytes.Buffer,
-	parentPreSpace bool, visitor SqlVisitor) (analyzeBuf *bytes.Buffer, hasWrite bool, err error) {
+	parentPreSpace bool, visitor SqlVisitor) (hasWrite bool, err error) {
 	// get root production
 	production, exist := i.productionMap[productionName]
 	if !exist {
-		return nil, false, fmt.Errorf("Production '%s' not found", productionName)
+		return false, fmt.Errorf("Production '%s' not found", productionName)
 	}
 	i.pathInfo.ProductionSet.add(production)
 
@@ -207,7 +187,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 		recurCounter.leave(productionName)
 	}()
 	if recurCounter.m[productionName] > i.maxRecursive {
-		return nil, false, fmt.Errorf("`%s` expression recursive num exceed max loop back %d\n %v",
+		return  false, fmt.Errorf("`%s` expression recursive num exceed max loop back %d\n %v",
 			productionName, i.maxRecursive, recurCounter.order)
 	}
 	nearMaxRecur := make(map[string]bool)
@@ -223,7 +203,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 		}
 	}
 	if len(selectableSeqs) == 0 {
-		return nil, false, fmt.Errorf("recursive num exceed max loop back %d\n %v",
+		return false, fmt.Errorf("recursive num exceed max loop back %d\n %v",
 			i.maxRecursive, recurCounter.order)
 	}
 
@@ -233,11 +213,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 	i.pathInfo.SeqSet.add(seqs)
 	firstWrite := true
 
-	// it will record origin producted sql without interpretation
-	analyzeBuf = &bytes.Buffer{}
-
 	for index, item := range seqs.Items {
-		var subAnalyBuf *bytes.Buffer
 		if yacc_parser.IsTerminal(item) || yacc_parser.NonTerminalNotInMap(i.productionMap, item) {
 			// terminal
 			i.printDebugInfo(item.OriginString(), recurCounter)
@@ -247,7 +223,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 				// not last rune in bnf expression
 				if selectIndex != len(production.Alter)-1 || index != len(seqs.Items)-1 {
 					if !visitor(sqlBuffer.String()) {
-						return nil, !firstWrite, normalStop
+						return !firstWrite, normalStop
 					}
 					sqlBuffer.Reset()
 					firstWrite = true
@@ -259,44 +235,44 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			}
 
 			if err = handlePreSpace(firstWrite, parentPreSpace, item, sqlBuffer); err != nil {
-				return nil, !firstWrite, err
+				return !firstWrite, err
 			}
 
 			if _, err := sqlBuffer.WriteString(item.OriginString()); err != nil {
-				return nil, !firstWrite, err
+				return !firstWrite, err
 			}
 
 			firstWrite = false
 
 		} else if yacc_parser.IsKeyword(item) {
 			if err = handlePreSpace(firstWrite, parentPreSpace, item, sqlBuffer); err != nil {
-				return nil, !firstWrite, err
+				return !firstWrite, err
 			}
 
 			// key word parse
 			if res, ok, err := i.keyFunc.Gen(item.OriginString()); err != nil {
-				return nil, !firstWrite, err
+				return !firstWrite, err
 			} else if ok {
 				i.printDebugInfo(res, recurCounter)
 				_, err := sqlBuffer.WriteString(res)
 				if err != nil {
-					return nil, !firstWrite, errors.New("fail to write `io.StringWriter`")
+					return !firstWrite, errors.New("fail to write `io.StringWriter`")
 				}
 
 				firstWrite = false
 			} else {
-				return nil, !firstWrite, fmt.Errorf("'%s' key word not support", item.OriginString())
+				return !firstWrite, fmt.Errorf("'%s' key word not support", item.OriginString())
 			}
 		} else if yacc_parser.IsCodeBlock(item) {
 			if err = handlePreSpace(firstWrite, parentPreSpace, item, sqlBuffer); err != nil {
-				return nil, !firstWrite, err
+				return !firstWrite, err
 			}
 
 			// lua code block
 			if err := i.luaVM.DoString(item.OriginString()[1 : len(item.OriginString())-1]); err != nil {
 				log.Printf("lua code `%s`, run fail\n %v\n",
 					item.OriginString(), err)
-				return nil, !firstWrite, err
+				return !firstWrite, err
 			}
 			if i.printBuf.Len() > 0 {
 				i.printDebugInfo(i.printBuf.String(), recurCounter)
@@ -308,10 +284,10 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			// nonTerminal recursive
 			var hasSubWrite bool
 			if firstWrite {
-				subAnalyBuf, hasSubWrite, err = i.generateSQLRandomly(item.OriginString(), recurCounter,
+				hasSubWrite, err = i.generateSQLRandomly(item.OriginString(), recurCounter,
 					sqlBuffer, parentPreSpace, visitor)
 			} else {
-				subAnalyBuf, hasSubWrite, err = i.generateSQLRandomly(item.OriginString(), recurCounter,
+				hasSubWrite, err = i.generateSQLRandomly(item.OriginString(), recurCounter,
 					sqlBuffer, item.HasPreSpace(), visitor)
 			}
 
@@ -320,21 +296,12 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			}
 
 			if err != nil {
-				return nil, !firstWrite, err
+				return !firstWrite, err
 			}
-		}
-
-		if subAnalyBuf == nil {
-			if item.HasPreSpace() {
-				analyzeBuf.WriteRune(' ')
-			}
-			analyzeBuf.WriteString(item.OriginString())
-		} else {
-			analyzeBuf.Write(subAnalyBuf.Bytes())
 		}
 	}
 
-	return analyzeBuf, !firstWrite, nil
+	return !firstWrite, nil
 }
 
 func handlePreSpace(firstWrite bool, parentSpace bool, tkn yacc_parser.Token, writer io.StringWriter) error {

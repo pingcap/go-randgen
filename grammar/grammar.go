@@ -9,7 +9,7 @@ import (
 // get Iterator by yy,
 // note that this iterator is not thread safe
 func NewIter(yy string, root string, maxRecursive int,
-	keyFunc gendata.Keyfun, analyze bool, debug bool) (sql_generator.SQLIterator, error) {
+	keyFunc gendata.Keyfun, debug bool) (sql_generator.SQLIterator, error) {
 
 	codeblocks, _, productionMap, err := Parse(yy)
 	if err != nil {
@@ -17,7 +17,7 @@ func NewIter(yy string, root string, maxRecursive int,
 	}
 
 	sqlIter, err := sql_generator.GenerateSQLRandomly(codeblocks,
-		productionMap, keyFunc, root, maxRecursive, analyze, debug)
+		productionMap, keyFunc, root, maxRecursive, debug)
 	if err != nil {
 		return nil, err
 	}
