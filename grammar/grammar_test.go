@@ -149,7 +149,7 @@ select:
    SELECT select
 `
 	iterator, err := NewIter(recurYy, "query", 5,
-		nil,  false)
+		nil, false)
 	assert.Equal(t, nil, err)
 
 	err = iterator.Visit(func(sql string) bool {
@@ -180,9 +180,28 @@ func TestRecur(t *testing.T) {
 		counter++
 
 		assert.Equal(t, "SELECT * FROM mmm", sql)
+
+		pathInfo := iter.PathInfo()
+		assert.Equal(t, 2, len(pathInfo.ProductionSet.Productions))
+		assert.Equal(t, "query", getProductionName(pathInfo.ProductionSet, 0))
+		assert.Equal(t, "select_char", getProductionName(pathInfo.ProductionSet, 1))
+
+		assert.Equal(t, 2, len(pathInfo.SeqSet.Seqs))
+		assert.Equal(t, [2]int{0, 0}, getSeqPS(pathInfo.SeqSet, 0))
+		assert.Equal(t, [2]int{1, 1}, getSeqPS(pathInfo.SeqSet, 1))
+
 	}, 100))
 
+	assert.Equal(t, 100, counter)
 	assert.Equal(t, nil, err)
+}
+
+func getProductionName(productionSet *sql_generator.ProductionSet, i int) string {
+	return productionSet.Productions[i].Head.OriginString()
+}
+
+func getSeqPS(seqSet *sql_generator.SeqSet, i int) [2]int {
+	return [2]int{seqSet.Seqs[i].PNumber, seqSet.Seqs[i].SNumber}
 }
 
 const yy = `
@@ -239,7 +258,7 @@ func:
 value:
     1 | 2 | 256 | 23445 | NULL
 `
-	iter ,err := NewIter(code, "query", 5, nil, false)
+	iter, err := NewIter(code, "query", 5, nil, false)
 	assert.Equal(t, nil, err)
 
 	err = iter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
@@ -254,5 +273,3 @@ value:
 	}, 5))
 	assert.Equal(t, nil, err)
 }
-
-
