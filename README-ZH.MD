@@ -141,6 +141,56 @@ Result2:
 除了 cmd 目录下的包，其他所有包对外暴露的函数的实现都是无状态的，可以很安全地作为
 一个库被反复调用。至于使用的方法，可以参考 cmd 包下相关命令的实现。
 
+示例：通过 yy 的文本内容获得一个 Iterator ，并且生成 10 条 sql
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/pingcap/go-randgen/grammar"
+	"github.com/pingcap/go-randgen/grammar/sql_generator"
+	"log"
+)
+
+func main() {
+	yy := `
+{
+i = 1
+}
+
+query: 
+    create
+    
+create:
+    CREATE TABLE 
+    {print(string.format("table%d", i)); i = i+1}
+    (a int)
+`
+	iterator, err := grammar.NewIter(yy, "query", 5, nil, false)
+	if err != nil {
+		log.Fatalf("get iter err %v\n", err)
+	}
+
+	iterator.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
+		fmt.Println(sql)
+	}, 5))
+}
+```
+
+> 注意这里 NewIter 第三个参数传 nil 没有问题是因为示例的 yy 并没有使用关键字，如果
+> 其中使用了 yy 的关键字，则最好使用 gendata.NewKeyfun() 来创建该参数
+
+打印的结果为：
+
+```sql
+CREATE TABLE table1 (a int)
+CREATE TABLE table2 (a int)
+CREATE TABLE table3 (a int)
+CREATE TABLE table4 (a int)
+CREATE TABLE table5 (a int)
+```
+
 
 ## 语法手册
 

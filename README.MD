@@ -153,6 +153,58 @@ safely.
 The implementation under `cmd` directory is the best examples
 to use it as a library. 
 
+A simple example: get an iterator by yy and generate ten sqls
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/pingcap/go-randgen/grammar"
+	"github.com/pingcap/go-randgen/grammar/sql_generator"
+	"log"
+)
+
+func main() {
+	yy := `
+{
+i = 1
+}
+
+query: 
+    create
+    
+create:
+    CREATE TABLE 
+    {print(string.format("table%d", i)); i = i+1}
+    (a int)
+`
+	iterator, err := grammar.NewIter(yy, "query", 5, nil, false)
+	if err != nil {
+		log.Fatalf("get iter err %v\n", err)
+	}
+
+	iterator.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
+		fmt.Println(sql)
+	}, 5))
+}
+```
+
+> Note that there is no problem to pass nil in the third param
+> because of the absence of keyword in the example yy. But if
+> you use yy keyword, you should use `gendata.NewKeyfun()` to
+> create this param.
+
+Print result：
+
+```sql
+CREATE TABLE table1 (a int)
+CREATE TABLE table2 (a int)
+CREATE TABLE table3 (a int)
+CREATE TABLE table4 (a int)
+CREATE TABLE table5 (a int)
+```
+
 ## Grammar Guide
 
 ### zz Grammar
