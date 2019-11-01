@@ -116,7 +116,7 @@ func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
 func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 	return func(state *lua.LState) int {
 		buf.WriteString(state.ToString(1))
-		return 0
+		return 0   // number of results
 	}
 }
 
@@ -131,6 +131,7 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	keyFunc gendata.Keyfun, productionName string, maxRecursive int,
 	debug bool) (SQLIterator, error) {
 	l := lua.NewState()
+	registerKeyfun(l, keyFunc)
 	// run head code blocks
 	for _, codeblock := range headCodeBlocks {
 		if err := l.DoString(codeblock.OriginString()[1 : len(codeblock.OriginString())-1]); err != nil {
@@ -152,6 +153,22 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 		pathInfo:       newPathInfo(),
 		debug:          debug,
 	}, nil
+}
+
+func registerKeyfun(luaVM *lua.LState, keyFunc gendata.Keyfun) {
+	for funName, function := range keyFunc {
+		fun := function
+		luaVM.SetGlobal(funName, luaVM.NewFunction(func(state *lua.LState) int {
+			s, err := fun()
+			if err != nil {
+				state.Push(lua.LString(err.Error()))
+			} else {
+				state.Push(lua.LString(s))
+			}
+
+			return 1   // number of return params
+		}))
+	}
 }
 
 var normalStop = errors.New("generateSQLRandomly: normal stop visit")

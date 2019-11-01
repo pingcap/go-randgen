@@ -457,6 +457,20 @@ query:
 
 这个示例并没有什么实际意义，只是表达个意思
 
+另一个比较重要的特性是你可以在 lua 代码块中用`_xxx()`的方式调用 yy 关键字：
+
+```
+query:{table = _table()}
+    BEGIN ; update ; select ; END
+
+update:
+    UPDATE {print(table)} SET _field_int = 10
+
+select:
+    SELECT * FROM {print(table)}
+```
+
+上面这种写法将能够保证 `update` 和 `selet` 的是同一张随即表。
 
 #### 常用模式
 

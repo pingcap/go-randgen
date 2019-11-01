@@ -491,6 +491,24 @@ query:
 Above example will only genrate "0" or "3"
 (Note that index of lua array begin from 1).
 
+Another important feature is that you can call yy key word in
+lua code block by `_xxx()`, for example:
+
+```
+query:{table = _table()}
+    BEGIN ; update ; select ; END
+
+update:
+    UPDATE {print(table)} SET _field_int = 10
+
+select:
+    SELECT * FROM {print(table)}
+```
+
+Above yy will ensure that random table in `update` and `select`
+is the same.
+
+
 #### Frequent Pattern
 
  - recursive subquery
