@@ -115,6 +115,23 @@ query:
 			num:       10,
 			simpleExp: "A aaa_tabl B ffff",
 		},
+		{
+			name:"test call key word from lua",
+			yy:`
+query:{table = _table()}
+    CREATE {print(table)}; UPDATE {print(table)} 
+`,
+			keyFun: map[string]func() (string, error){
+				"_table": func() (string, error) {
+					return "aaa_tabl", nil
+				},
+			},
+			num:       2,
+			expSeq:    []string{
+				"CREATE aaa_tabl",
+				"UPDATE aaa_tabl",
+			},
+		},
 	}
 
 	for _, c := range cases {

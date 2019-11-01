@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -24,7 +26,50 @@ func TestCreateUniqueTable(t *testing.T) {
 		"../../examples/toturial/create_unique_table.yy", "-B", "-Q", "5", "-O", "cute", "--skip-zz")
 	assert.Equal(t, nil, err)
 
-	content, err := ioutil.ReadFile("./cute.rand.sql")
+	randFilePath := "./cute.rand.sql"
+	content, err := ioutil.ReadFile(randFilePath)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, testCreateUniqueTableExpect, string(content))
+
+	err = os.Remove(randFilePath)
+	assert.Equal(t, nil, err)
+}
+
+func TestUpdateSql(t *testing.T) {
+	reInitCmd()
+	_, err := executeCommand(rootCmd, "gentest", "-Y",
+		"../../examples/toturial/test_update.yy", "-B", "-Q", "4", "-O", "upda")
+	assert.Equal(t, nil, err)
+
+	randFilePath := "./upda.rand.sql"
+	content, err := ioutil.ReadFile(randFilePath)
+	assert.Equal(t, nil, err)
+
+	sqls := strings.Split(string(content), "\n")
+	assert.Equal(t, 4, len(sqls))
+	var tableName string
+	for i := 0; i < 4; i++ {
+		if i == 0 {
+			assert.Equal(t, "BEGIN;", sqls[i])
+			continue
+		}
+		if i == 3 {
+			assert.Equal(t, "END;", sqls[i])
+			continue
+		}
+
+		if i == 1 {
+			// UPDATE table_20_utf8_4 SET `col_bigint_undef_signed` = 10;
+			tableName = strings.Split(sqls[i], " ")[1]
+		}
+		if i == 2 {
+			// SELECT * FROM table_20_utf8_4;
+			selectedTable := strings.Split(sqls[i], " ")[3]
+			assert.Equal(t, tableName, selectedTable[:len(selectedTable)-1])
+		}
+	}
+
+	err = os.Remove(randFilePath)
+	assert.Equal(t, nil, err)
+	err = os.Remove("./upda.data.sql")
 }
