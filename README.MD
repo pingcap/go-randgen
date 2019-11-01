@@ -153,7 +153,7 @@ safely.
 The implementation under `cmd` directory is the best examples
 to use it as a library. 
 
-A simple example: get an iterator by yy and generate ten sqls]
+A simple example: get an iterator by yy and generate ten sqls
 
 ```go
 package main
