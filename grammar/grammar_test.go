@@ -121,7 +121,7 @@ query:
 
 		t.Run(c.name, func(t *testing.T) {
 			iterator, err := NewIter(c.yy, "query", 5,
-				c.keyFun, false, false)
+				c.keyFun, false)
 			assert.Equal(t, nil, err)
 
 			iterator.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
@@ -149,7 +149,7 @@ select:
    SELECT select
 `
 	iterator, err := NewIter(recurYy, "query", 5,
-		nil, false, false)
+		nil,  false)
 	assert.Equal(t, nil, err)
 
 	err = iterator.Visit(func(sql string) bool {
@@ -171,7 +171,7 @@ select_char:
 `
 
 func TestRecur(t *testing.T) {
-	iter, err := NewIter(halfRecur, "query", 1, nil, false, false)
+	iter, err := NewIter(halfRecur, "query", 1, nil, false)
 	assert.Equal(t, nil, err)
 
 	counter := 0
@@ -212,7 +212,7 @@ func TestByYySimplePrint(t *testing.T) {
 		"_field": func() (string, error) {
 			return "ffff", nil
 		},
-	}, false, false)
+	}, false)
 	assert.Equal(t, nil, err)
 
 	iter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
@@ -239,7 +239,7 @@ func:
 value:
     1 | 2 | 256 | 23445 | NULL
 `
-	iter ,err := NewIter(code, "query", 5, nil, false, false)
+	iter ,err := NewIter(code, "query", 5, nil, false)
 	assert.Equal(t, nil, err)
 
 	err = iter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {

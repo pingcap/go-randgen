@@ -20,7 +20,6 @@ import (
 var dsn1 string
 var dsn2 string
 var order bool
-var analyze int
 var dumpDir string
 
 func newExecCmd() *cobra.Command {
@@ -50,9 +49,6 @@ func newExecCmd() *cobra.Command {
 		false, "compare sql result with order")
 	execCmd.Flags().StringVar(&dumpDir, "dump",
 		"dump", "inconsistent sqls dump directory")
-	execCmd.Flags().IntVar(&analyze, "analyze", 0,
-		"print root bug report after sqls exec over," +
-		" 0 means stop it, n(n>0) means print top n root cause")
 
 	return execCmd
 }
@@ -187,26 +183,12 @@ func execAction(cmd *cobra.Command, args []string) {
 	err = sqlIter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
 		if !consistent {
-			if analyze > 0 {sqlIter.PushInPathHeap(sql)}
 			visitor(sql, dsn1Res, dsn2Res)
 		}
 	}, queries))
 
 	if err != nil {
 		log.Fatalf("Fatal Error: %v \n", err)
-	}
-
-	// print analyze info
-	if analyze > 0 {
-		infos, err := sqlIter.Analyze(analyze)
-		if err != nil {
-			log.Fatalf("analyze fail %v\n", err)
-		}
-
-		for _, info := range infos {
-			fmt.Printf(analyzeTemp, info.NonTerminal,
-				info.Branch, info.Conflicts, info.Content, info.ExampleSql)
-		}
 	}
 
 	log.Println("dump ok")
