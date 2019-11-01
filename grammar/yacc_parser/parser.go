@@ -10,7 +10,6 @@ import (
 // token sequence of one branch
 type Seq struct {
 	Items   []Token
-	MaxHeap Heap
 	// production the Seq belong to
 	PNumber int
 	// number of the Seq in the production
