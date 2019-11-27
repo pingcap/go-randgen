@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"time"
 )
 
 type BranchAnalyze struct {
@@ -78,6 +79,7 @@ type SQLRandomlyIterator struct {
 	// path info
 	pathInfo     *PathInfo
 	maxRecursive int
+	rander      *rand.Rand
 	debug        bool
 }
 
@@ -116,7 +118,7 @@ func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
 func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 	return func(state *lua.LState) int {
 		buf.WriteString(state.ToString(1))
-		return 0   // number of results
+		return 0 // number of results
 	}
 }
 
@@ -129,7 +131,7 @@ func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	productionMap map[string]*yacc_parser.Production,
 	keyFunc gendata.Keyfun, productionName string, maxRecursive int,
-	debug bool) (SQLIterator, error) {
+	rander *rand.Rand, debug bool) (SQLIterator, error) {
 	l := lua.NewState()
 	registerKeyfun(l, keyFunc)
 	// run head code blocks
@@ -142,6 +144,9 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	pBuf := &bytes.Buffer{}
 	// cover the origin lua print function
 	l.SetGlobal("print", l.NewFunction(getLuaPrintFun(pBuf)))
+	if rander == nil {
+		rander = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
 
 	return &SQLRandomlyIterator{
 		productionName: productionName,
@@ -151,6 +156,7 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 		printBuf:       pBuf,
 		maxRecursive:   maxRecursive,
 		pathInfo:       newPathInfo(),
+		rander:         rander,
 		debug:          debug,
 	}, nil
 }
@@ -166,7 +172,7 @@ func registerKeyfun(luaVM *lua.LState, keyFunc gendata.Keyfun) {
 				state.Push(lua.LString(s))
 			}
 
-			return 1   // number of return params
+			return 1 // number of return params
 		}))
 	}
 }
@@ -204,7 +210,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 		recurCounter.leave(productionName)
 	}()
 	if recurCounter.m[productionName] > i.maxRecursive {
-		return  false, fmt.Errorf("`%s` expression recursive num exceed max loop back %d\n %v",
+		return false, fmt.Errorf("`%s` expression recursive num exceed max loop back %d\n %v",
 			productionName, i.maxRecursive, recurCounter.order)
 	}
 	nearMaxRecur := make(map[string]bool)
@@ -225,7 +231,7 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 	}
 
 	// random an alter
-	selectIndex := rand.Intn(len(selectableSeqs))
+	selectIndex := i.rander.Intn(len(selectableSeqs))
 	seqs := selectableSeqs[selectIndex]
 	i.pathInfo.SeqSet.add(seqs)
 	firstWrite := true
