@@ -73,3 +73,29 @@ func TestUpdateSql(t *testing.T) {
 	assert.Equal(t, nil, err)
 	err = os.Remove("./upda.data.sql")
 }
+
+
+func TestSeed(t *testing.T) {
+
+	for i := 0; i < 10; i++ {
+		reInitCmd()
+		_, err := executeCommand(rootCmd, "gentest", "-Y",
+			"../../examples/toturial/embed_lua.yy", "-B", "-Q", "5", "-O",
+			"lua", "--skip-zz", "--seed", "0")
+		assert.Equal(t, nil, err)
+
+		randFilePath := "./lua.rand.sql"
+		content, err := ioutil.ReadFile(randFilePath)
+		assert.Equal(t, nil, err)
+
+		expected := `0;
+0;
+3;
+0;
+3;`
+
+		assert.Equal(t, expected, string(content))
+		err = os.Remove(randFilePath)
+		assert.Equal(t, nil, err)
+	}
+}
