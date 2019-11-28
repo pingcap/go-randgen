@@ -24,16 +24,12 @@ var root string
 
 var debug bool
 var skipZz bool
-var seed int
+var seed int64
 var outPath string
 
 var rootCmd = &cobra.Command{
 	Use:   "go-randgen",
 	Short: "QA tool for fuzzy test just like mysql randgen",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		rand.Seed(int64(seed))
-		return nil
-	},
 }
 
 // init command flag
@@ -50,7 +46,7 @@ func initCmd() {
 		"print detail generate path")
 	rootCmd.PersistentFlags().BoolVar(&skipZz, "skip-zz", false,
 		"skip gen data phase, only use yy to generate random sqls")
-	rootCmd.PersistentFlags().IntVar(&seed, "seed", time.Now().Nanosecond(),
+	rootCmd.PersistentFlags().Int64Var(&seed, "seed", time.Now().UnixNano(),
 		"random number seed, default time.Now().Nanosecond()")
 	rootCmd.PersistentFlags().StringVarP(&outPath, "output", "O","output",
 		"sql output file path")
@@ -126,7 +122,8 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 func getIter(keyf gendata.Keyfun) sql_generator.SQLIterator {
 	yy := loadYy()
 
-	iterator, err := grammar.NewIter(yy, root, maxRecursive, keyf, debug)
+	iterator, err := grammar.NewIterWithRander(yy, root, maxRecursive, keyf,
+		rand.New(rand.NewSource(seed)), debug)
 	if err != nil {
 		log.Fatalln("Fatal Error: " + err.Error())
 	}
