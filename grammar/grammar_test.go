@@ -9,17 +9,24 @@ import (
 	"testing"
 )
 
+type randerCase struct {
+	rander *rand.Rand
+	expSeq []string
+}
+
 type yyTestCase struct {
-	name      string
-	yy        string
-	num       int
-	keyFun    gendata.Keyfun
-	simpleExp string
-	expected  func(string) bool
-	expSeq    []string
+	name       string
+	yy         string
+	num        int
+	keyFun     gendata.Keyfun
+	simpleExp  string
+	expected   func(string) bool
+	expSeq     []string
+	randerCase *randerCase
 }
 
 func TestIter(t *testing.T) {
+	rander := rand.New(rand.NewSource(0))
 	cases := []*yyTestCase{
 		{
 			name: "test embeded lua",
@@ -32,12 +39,22 @@ arr={0,2,3,4}
 query:
   {print(arr[f.a])} | {print(arr[f.b])}
 `,
-			num: 10,
+			num: 5,
 			expected: func(sql string) bool {
 				if sql == "0" || sql == "3" {
 					return true
 				}
 				return false
+			},
+			randerCase: &randerCase{
+				rander:rander,
+				expSeq:[]string{
+					"0",
+					"0",
+					"3",
+					"0",
+					"3",
+				},
 			},
 		},
 		{
@@ -117,8 +134,8 @@ query:
 			simpleExp: "A aaa_tabl B ffff",
 		},
 		{
-			name:"test call key word from lua",
-			yy:`
+			name: "test call key word from lua",
+			yy: `
 query:{table = _table()}
     CREATE {print(table)}; UPDATE {print(table)} 
 `,
@@ -127,8 +144,8 @@ query:{table = _table()}
 					return "aaa_tabl", nil
 				},
 			},
-			num:       2,
-			expSeq:    []string{
+			num: 2,
+			expSeq: []string{
 				"CREATE aaa_tabl",
 				"UPDATE aaa_tabl",
 			},
@@ -153,142 +170,18 @@ query:{table = _table()}
 					assert.Equal(t, c.simpleExp, sql)
 				}
 			}, c.num))
-		})
-	}
 
-}
+			if c.randerCase != nil { //case with rander
+				rCase := c.randerCase
+				randIter, err := NewIterWithRander(c.yy, "query", 5,
+					c.keyFun, rCase.rander,false)
+				assert.Equal(t, nil, err)
 
-func TestIterWithRander(t *testing.T) {
-	cases := []*yyTestCase{
-		{
-			name: "test embeded lua",
-			yy: `
-{
-f={a=1, b=3}
-arr={0,2,3,4}
-}
+				randIter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
+					assert.Equal(t, rCase.expSeq[i], sql)
+				}, c.num))
+			}
 
-query:
-  {print(arr[f.a])} | {print(arr[f.b])}
-`,
-			num: 5,
-			expSeq:    []string{
-				"0",
-				"0",
-				"3",
-				"0",
-				"3",
-			},
-		},
-		{
-			name: "test first write",
-			yy: `
-query:
-	{n=1} select
-
-select:
-    sub_select | haha_select
-
-sub_select:
-    {n = 2} SELECT
-
-haha_select:
-    {m = 4} SELECT
-`,
-			num:       50,
-			simpleExp: "SELECT",
-		},
-		{
-			name: "test semi colon",
-			yy: `
-query:
-	select ; create
-
-select:
-    SET @stmt = "FFF";
-	PREPARE stmt FROM @stmt_create ; EXECUTE stmt ;
-	EXECUTE stmt;
-
-create:
-	CREATE OOO; CCC
-`,
-			num: 6,
-			expSeq: []string{
-				`SET @stmt = "FFF"`,
-				`PREPARE stmt FROM @stmt_create`,
-				`EXECUTE stmt`,
-				`EXECUTE stmt`,
-				`CREATE OOO`,
-				`CCC`,
-			},
-		},
-		{
-			name: "test pre space",
-			yy: `
-query: frame_clause
-
-frame_units:
-    RANGE
-
-frame_between:
-	BETWEEN
-
-frame_clause:
-	frame_units frame_between
-`,
-			num:       6,
-			simpleExp: "RANGE BETWEEN",
-		},
-		{
-			name: "test key word",
-			yy: `
-query:
-    A _table B _field
-`,
-			keyFun: map[string]func() (string, error){
-				"_table": func() (string, error) {
-					return "aaa_tabl", nil
-				},
-				"_field": func() (string, error) {
-					return "ffff", nil
-				},
-			},
-			num:       10,
-			simpleExp: "A aaa_tabl B ffff",
-		},
-		{
-			name:"test call key word from lua",
-			yy:`
-query:{table = _table()}
-    CREATE {print(table)}; UPDATE {print(table)} 
-`,
-			keyFun: map[string]func() (string, error){
-				"_table": func() (string, error) {
-					return "aaa_tabl", nil
-				},
-			},
-			num:       2,
-			expSeq:    []string{
-				"CREATE aaa_tabl",
-				"UPDATE aaa_tabl",
-			},
-		},
-	}
-
-	rander := rand.New(rand.NewSource(0))
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			iterator, err := NewIterWithRander(c.yy, "query", 5,
-				c.keyFun, rander, false)
-			assert.Equal(t, nil, err)
-
-			iterator.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
-				if c.expSeq != nil {
-					assert.Equal(t, c.expSeq[i], sql)
-				} else {
-					assert.Equal(t, c.simpleExp, sql)
-				}
-			}, c.num))
 		})
 	}
 
