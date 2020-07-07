@@ -303,7 +303,7 @@ Related source code is `tablesVars` variable in
 
 | keys   | mean    |  options  | default |
 | ------ | -----   | ---- | ----|
-| types  | field type |任意合法的mysql类型|['int', 'varchar', 'date', 'time', 'datetime'] |
+| types  | field type | any valid MySQL type |['int', 'varchar', 'date', 'time', 'datetime'] |
 | keys   | index or not  |'key' means add index to the field, 'undef' means not|['undef', 'key']|
 | sign   | unsigned or not |'signed', 'unsigned'|['signed']|
 
