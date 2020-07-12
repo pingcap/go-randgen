@@ -66,7 +66,6 @@ func ByZz(zz string) ([]string, Keyfun, error) {
 		zz = string(zzBs)
 	}
 
-
 	l, err := runLua(zz)
 	if err != nil {
 		return nil, nil, err
@@ -118,7 +117,7 @@ func ByDb(db *sql.DB) (Keyfun, error) {
 		if err != nil {
 			return nil, err
 		}
-		tableStmts = append(tableStmts, &tableStmt{name:tableName})
+		tableStmts = append(tableStmts, &tableStmt{name: tableName})
 	}
 	rows.Close()
 
@@ -140,7 +139,7 @@ func ByDb(db *sql.DB) (Keyfun, error) {
 				return nil, err
 			}
 
-			fieldExecs = append(fieldExecs, &fieldExec{name:fieldName, tp:fieldType})
+			fieldExecs = append(fieldExecs, &fieldExec{name: fieldName, tp: fieldType})
 		}
 
 	}
@@ -199,13 +198,15 @@ func joinFields(fields []*fieldExec) string {
 
 		strBuf.WriteString(f.name)
 
-		if i == len(fields) - 1 {
+		if i == len(fields)-1 {
 			strBuf.WriteRune('`')
 		}
 	}
 
 	return strBuf.String()
 }
+
+var field_invariant = ""
 
 func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 	fieldsInt := make([]*fieldExec, 0)
@@ -230,11 +231,24 @@ func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 			return tables[rand.Intn(len(tables))].name, nil
 		},
 		"_field": func() (string, error) {
-			if len(fields) == 0{
+			if len(fields) == 0 {
 				return "", errors.New("there is no fields")
 			}
 			return "`" + fields[rand.Intn(len(fields))].name + "`", nil
 		},
+
+		"_field_invariant": func() (string, error) {
+			if len(fields) == 0 {
+				return "", errors.New("there is no fields")
+			}
+			// set the invariant
+			if len(field_invariant) == 0 {
+				field_invariant = "`" + fields[rand.Intn(len(fields))].name + "`"
+			}
+			// use the invariant
+			return field_invariant, nil
+		},
+
 		"_field_int": func() (string, error) {
 			if len(fieldsInt) == 0 {
 				return "", errors.New("there is no int fields")
