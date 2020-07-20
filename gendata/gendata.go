@@ -9,7 +9,6 @@ import (
 	"github.com/pingcap/go-randgen/gendata/generators"
 	"github.com/pingcap/go-randgen/resource"
 	"github.com/yuin/gopher-lua"
-	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -164,7 +163,6 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 				err = rows.Scan(&sql.RawBytes{}, &fieldName,
 					&fieldType, &sql.RawBytes{},
 					&sql.RawBytes{}, &sql.RawBytes{})
-				log.Println(rows)
 			} else if dbms == "mysql" {
 				err = rows.Scan(&fieldName, &fieldType,
 					&sql.RawBytes{}, &sql.RawBytes{},

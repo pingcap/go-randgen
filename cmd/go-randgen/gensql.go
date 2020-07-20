@@ -10,7 +10,6 @@ import (
 )
 
 var gensqlDsn string
-var dbdriver = "mysql"
 
 func newGensqlCmd() *cobra.Command {
 	gensqlCmd := &cobra.Command{
@@ -40,7 +39,7 @@ func newGensqlCmd() *cobra.Command {
 
 func gensqlAction(cmd *cobra.Command, args []string) {
 	db, err := compare.OpenDBWithRetry(dbms, gensqlDsn)
-	log.Println("DBMS is: ", dbms)
+	log.Println("DBMS is:", dbms)
 
 	if err != nil {
 		log.Fatalf("connect to dsn %s fail, %v\n", gensqlDsn, err)
