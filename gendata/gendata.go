@@ -226,6 +226,8 @@ func joinFields(fields []*fieldExec) string {
 	return strBuf.String()
 }
 
+var field_invariant = ""
+
 func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 	fieldsInt := make([]*fieldExec, 0)
 	fieldsChar := make([]*fieldExec, 0)
@@ -254,6 +256,19 @@ func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 			}
 			return "`" + fields[rand.Intn(len(fields))].name + "`", nil
 		},
+
+		"_field_invariant": func() (string, error) {
+			if len(fields) == 0 {
+				return "", errors.New("there is no fields")
+			}
+			// set the invariant
+			if len(field_invariant) == 0 {
+				field_invariant = "`" + fields[rand.Intn(len(fields))].name + "`"
+			}
+			// use the invariant
+			return field_invariant, nil
+		},
+
 		"_field_int": func() (string, error) {
 			if len(fieldsInt) == 0 {
 				return "", errors.New("there is no int fields")
