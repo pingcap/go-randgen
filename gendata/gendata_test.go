@@ -42,20 +42,20 @@ data = {
 		assert.Equal(t, config.Tables.numbers, len(ddls))
 		assert.Equal(t, 18, len(fieldExecs))
 
-/*		for _, sql := range ddls {
-			fmt.Println(sql.ddl)
-		}
+		/*		for _, sql := range ddls {
+					fmt.Println(sql.ddl)
+				}
 
-		for _, exec := range fieldExecs {
-			fmt.Println(exec)
-		}*/
+				for _, exec := range fieldExecs {
+					fmt.Println(exec)
+				}*/
 
 	})
 
 	t.Run("gen sqls", func(t *testing.T) {
 		sqls, _, err := ByConfig(config)
 		assert.Equal(t, nil, err)
-		assert.Equal(t, config.Tables.numbers * 2, len(sqls))
+		assert.Equal(t, config.Tables.numbers*2, len(sqls))
 	})
 
 }
@@ -80,20 +80,19 @@ func TestByDb(t *testing.T) {
 		WillReturnRows(rows)
 
 	type fieldInfo struct {
-		tp   string
+		tp string
 	}
 
 	infoOrders := []string{"v1", "v2"}
 
 	infos := map[string]*fieldInfo{
-		"v1":{
-			tp:"int(11)",
+		"v1": {
+			tp: "int(11)",
 		},
-		"v2":{
+		"v2": {
 			tp: "varchar(255)",
 		},
 	}
-
 
 	fRows := sqlmock.NewRows([]string{"Field", "Type", "Null",
 		"Key", "Default", "Extra"})
@@ -106,7 +105,7 @@ func TestByDb(t *testing.T) {
 	mock.ExpectQuery("desc table1").
 		WillReturnRows(fRows)
 
-	kf, err := ByDb(db)
+	kf, err := ByDb(db, "mysql")
 	assert.Equal(t, nil, err)
 
 	for i := 0; i < 50; i++ {

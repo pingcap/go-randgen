@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/pingcap/go-randgen/gendata"
-	"github.com/fatih/color"
 	"github.com/pingcap/go-randgen/grammar/sql_generator"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
@@ -54,10 +54,10 @@ func newExecCmd() *cobra.Command {
 }
 
 type dumpInfo struct {
-	num int   // serial number
-	sql string
-	dsn1 string
-	dsn2 string
+	num     int // serial number
+	sql     string
+	dsn1    string
+	dsn2    string
 	dsn1Res compare.DsnRes
 	dsn2Res compare.DsnRes
 }
@@ -100,12 +100,12 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 	return func(sql string, dsn1Res compare.DsnRes, dsn2Res compare.DsnRes) error {
 
 		info := &dumpInfo{
-			num:count,
-			sql:sql,
-			dsn1:dsn1,
-			dsn2:dsn2,
-			dsn1Res:dsn1Res,
-			dsn2Res:dsn2Res,
+			num:     count,
+			sql:     sql,
+			dsn1:    dsn1,
+			dsn2:    dsn2,
+			dsn1Res: dsn1Res,
+			dsn2Res: dsn2Res,
 		}
 
 		err := ioutil.WriteFile(filepath.Join(dumpDir,
@@ -130,18 +130,17 @@ func execAction(cmd *cobra.Command, args []string) {
 		log.Fatalln("Fatal Error: dump directory already exist")
 	}
 
-	db1, err := compare.OpenDBWithRetry("mysql", dsn1)
+	db1, err := compare.OpenDBWithRetry(dbms, dsn1)
 	if err != nil {
 		log.Fatalf("connect dsn1 %s error %v\n", dsn1, err)
 	}
 
-	db2, err := compare.OpenDBWithRetry("mysql", dsn2)
+	db2, err := compare.OpenDBWithRetry(dbms, dsn2)
 	if err != nil {
 		log.Fatalf("connect dsn2 %s error %v\n", dsn2, err)
 	}
 
 	log.Println("Open DB ok, starting generate data in two db by ddls")
-
 
 	var keyf gendata.Keyfun
 
@@ -158,7 +157,7 @@ func execAction(cmd *cobra.Command, args []string) {
 
 		log.Println("generating data ok")
 	} else {
-		keyf, err = gendata.ByDb(db1)
+		keyf, err = gendata.ByDb(db1, dbms)
 		if err != nil {
 			log.Fatalf("Fatal Error: %v\n", err)
 		}

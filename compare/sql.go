@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 	"log"
 	"strings"
 	"sync"
@@ -15,7 +16,7 @@ import (
 // OpenDBWithRetry opens a database specified by its database driver name and a
 // driver-specific Data source name. And it will do some retries if the connection fails.
 // variablize for mock conveniently
-var OpenDBWithRetry = func(driverName, dataSourceName string) (mdb *sql.DB, err error){
+var OpenDBWithRetry = func(driverName, dataSourceName string) (mdb *sql.DB, err error) {
 	startTime := time.Now()
 	sleepTime := time.Millisecond * 500
 	retryCnt := 60
@@ -61,7 +62,7 @@ func (s *SqlResult) Contains(row string) bool {
 	return ok
 }
 
-func (s *SqlResult) NonOrderEqualTo(another *SqlResult) bool  {
+func (s *SqlResult) NonOrderEqualTo(another *SqlResult) bool {
 	if len(s.Rows) != len(another.Rows) {
 		return false
 	}
@@ -90,7 +91,7 @@ func (s *SqlResult) BytesEqualTo(another *SqlResult) bool {
 	return true
 }
 
-func (s *SqlResult) RowBytesEqualTo(another *SqlResult, r int, row [][]byte) bool  {
+func (s *SqlResult) RowBytesEqualTo(another *SqlResult, r int, row [][]byte) bool {
 	row1 := s.Data[r]
 	row2 := row
 	if len(row1) != len(row2) {
@@ -236,10 +237,8 @@ func query(db *sql.DB, sql string) (*SqlResult, error) {
 		allRows = append(allRows, columns)
 	}
 
-
-	return &SqlResult{Data: allRows, Rows:rowSet, Header: cols, ColumnTypes: types}, nil
+	return &SqlResult{Data: allRows, Rows: rowSet, Header: cols, ColumnTypes: types}, nil
 }
-
 
 func exec(db *sql.DB, sql string) (int64, error) {
 	result, err := db.Exec(sql)
@@ -256,9 +255,9 @@ func exec(db *sql.DB, sql string) (int64, error) {
 }
 
 var execSqls = map[string]bool{
-	"delete" : true,
-	"create" : true,
-	"update" : true,
+	"delete": true,
+	"create": true,
+	"update": true,
 }
 
 func isExec(sql string) bool {
@@ -276,7 +275,7 @@ type SqlExecErr struct {
 	err error
 }
 
-func ExecSqlsInDbs(sqls []string, dbs ... *sql.DB) (string, error) {
+func ExecSqlsInDbs(sqls []string, dbs ...*sql.DB) (string, error) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(dbs))
 
@@ -288,7 +287,7 @@ func ExecSqlsInDbs(sqls []string, dbs ... *sql.DB) (string, error) {
 			defer wg.Done()
 			for _, sqlStr := range sqls {
 				select {
-				case <- c.Done():
+				case <-c.Done():
 					break
 				default:
 					if _, err := db.Exec(sqlStr); err != nil {
@@ -306,7 +305,7 @@ func ExecSqlsInDbs(sqls []string, dbs ... *sql.DB) (string, error) {
 
 	wg.Wait()
 	close(errCh)
-	sqlErr := <- errCh
+	sqlErr := <-errCh
 	if sqlErr != nil {
 		return sqlErr.sql, sqlErr.err
 	}

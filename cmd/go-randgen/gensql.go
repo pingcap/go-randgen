@@ -10,6 +10,7 @@ import (
 )
 
 var gensqlDsn string
+var dbdriver = "mysql"
 
 func newGensqlCmd() *cobra.Command {
 	gensqlCmd := &cobra.Command{
@@ -27,7 +28,6 @@ func newGensqlCmd() *cobra.Command {
 			if maxRecursive <= 0 {
 				maxRecursive = math.MaxInt32
 			}
-
 			return nil
 		},
 		Run: gensqlAction,
@@ -39,13 +39,15 @@ func newGensqlCmd() *cobra.Command {
 }
 
 func gensqlAction(cmd *cobra.Command, args []string) {
-	db, err := compare.OpenDBWithRetry("mysql", gensqlDsn)
+	db, err := compare.OpenDBWithRetry(dbms, gensqlDsn)
+	log.Println("DBMS is: ", dbms)
+
 	if err != nil {
 		log.Fatalf("connect to dsn %s fail, %v\n", gensqlDsn, err)
 	}
 
 	log.Println("Cache database meta info...")
-	keyf, err := gendata.ByDb(db)
+	keyf, err := gendata.ByDb(db, dbms)
 	if err != nil {
 		log.Fatalf("Fatal Error: %v\n", err)
 	}
