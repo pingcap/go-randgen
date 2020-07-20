@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/go-randgen/gendata/generators"
 	"github.com/pingcap/go-randgen/resource"
 	"github.com/yuin/gopher-lua"
+	"log"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -118,11 +120,11 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 	var err error
 
 	if dbms == "sqlite3" {
-		rows, err = db.Query(".tables")
+		rows, err = db.Query("SELECT name FROM sqlite_master WHERE type='table';")
 	} else if dbms == "mysql" {
 		rows, err = db.Query("show tables")
 	} else {
-		err = &dbDriverError{dbms, "Cannot process the dbms"}
+		err = &dbDriverError{dbms, "Cannot retrieve the tables."}
 	}
 
 	if err != nil {
@@ -144,17 +146,31 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 	fieldExecs := make([]*fieldExec, 0)
 
 	if len(tableStmts) > 0 {
-		rows, err := db.Query(fmt.Sprintf("desc %s", tableStmts[0].name))
+		if dbms == "sqlite3" {
+			rows, err = db.Query(fmt.Sprintf("PRAGMA table_info('%s');", tableStmts[0].name))
+		} else if dbms == "mysql" {
+			rows, err = db.Query(fmt.Sprintf("desc %s", tableStmts[0].name))
+		} else {
+			err = &dbDriverError{dbms, "Cannot retrieve the fields"}
+		}
+
 		if err != nil {
 			return nil, err
 		}
 
 		for rows.Next() {
 			var fieldName, fieldType string
+			if dbms == "sqlite3" {
+				err = rows.Scan(&sql.RawBytes{}, &fieldName,
+					&fieldType, &sql.RawBytes{},
+					&sql.RawBytes{}, &sql.RawBytes{})
+				log.Println(rows)
+			} else if dbms == "mysql" {
+				err = rows.Scan(&fieldName, &fieldType,
+					&sql.RawBytes{}, &sql.RawBytes{},
+					&sql.RawBytes{}, &sql.RawBytes{})
+			}
 
-			err = rows.Scan(&fieldName, &fieldType,
-				&sql.RawBytes{}, &sql.RawBytes{},
-				&sql.RawBytes{}, &sql.RawBytes{})
 			if err != nil {
 				return nil, err
 			}
