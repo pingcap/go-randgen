@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/go-randgen/gendata/generators"
 	"github.com/pingcap/go-randgen/resource"
@@ -102,9 +103,29 @@ func ByConfig(config *ZzConfig) ([]string, Keyfun, error) {
 	return sqls, NewKeyfun(tableStmts, fieldExecs), nil
 }
 
+type dbDriverError struct {
+	driver string
+	msg    string
+}
+
+func (e *dbDriverError) Error() string {
+	return fmt.Sprintf("%s - %s", e.msg, e.driver)
+}
+
 // generate keyfun by db, it assumes all tables have the same fields
-func ByDb(db *sql.DB) (Keyfun, error) {
-	rows, err := db.Query("show tables")
+func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
+	// support different databases
+	var rows *sql.Rows
+	var err error
+
+	if dbms == "sqlite3" {
+		rows, err = db.Query("SELECT name FROM sqlite_master WHERE type='table';")
+	} else if dbms == "mysql" {
+		rows, err = db.Query("show tables")
+	} else {
+		err = &dbDriverError{dbms, "Cannot retrieve the tables."}
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -124,17 +145,30 @@ func ByDb(db *sql.DB) (Keyfun, error) {
 	fieldExecs := make([]*fieldExec, 0)
 
 	if len(tableStmts) > 0 {
-		rows, err := db.Query(fmt.Sprintf("desc %s", tableStmts[0].name))
+		if dbms == "sqlite3" {
+			rows, err = db.Query(fmt.Sprintf("PRAGMA table_info('%s');", tableStmts[0].name))
+		} else if dbms == "mysql" {
+			rows, err = db.Query(fmt.Sprintf("desc %s", tableStmts[0].name))
+		} else {
+			err = &dbDriverError{dbms, "Cannot retrieve the fields"}
+		}
+
 		if err != nil {
 			return nil, err
 		}
 
 		for rows.Next() {
 			var fieldName, fieldType string
+			if dbms == "sqlite3" {
+				err = rows.Scan(&sql.RawBytes{}, &fieldName,
+					&fieldType, &sql.RawBytes{},
+					&sql.RawBytes{}, &sql.RawBytes{})
+			} else if dbms == "mysql" {
+				err = rows.Scan(&fieldName, &fieldType,
+					&sql.RawBytes{}, &sql.RawBytes{},
+					&sql.RawBytes{}, &sql.RawBytes{})
+			}
 
-			err = rows.Scan(&fieldName, &fieldType,
-				&sql.RawBytes{}, &sql.RawBytes{},
-				&sql.RawBytes{}, &sql.RawBytes{})
 			if err != nil {
 				return nil, err
 			}
