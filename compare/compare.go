@@ -110,6 +110,10 @@ func ByQuery(sql string, db1 *sql.DB, db2 *sql.DB, nonOrder bool) (consistent bo
 	}()
 
 	go func() {
+		_, err := db2.Exec(`set @@session.tidb_isolation_read_engines = "tiflash"`)
+		if err != nil {
+			log.Fatalln(err)
+		}
 		res2 = newQueryDsnRes(db2, sql)
 		wg.Done()
 	}()

@@ -1,21 +1,22 @@
 tables = {
-    rows = {10, 20, 30, 90},
+    rows = {1, 10, 20, 30, 90},
     -- SHOW CHARACTER SET;
-    charsets = {'utf8', 'latin1', 'binary'},
+    charsets = {'utf8'},
     -- partition number
-    partitions = {4, 6, 'undef'},
+    partitions = {'undef'},
 }
 
 fields = {
-    types = {'bigint', 'float', 'double', 'decimal(40, 20)',
+    types = {'int','bigint', 'float', 'double', 'decimal(40, 20)',
         'char(20)', 'varchar(20)', 'enum'},
-    sign = {'signed', 'unsigned'}
+    sign = {'signed', 'unsigned'},
+    keys= {'key'}
 }
 
 data = {
-    numbers = {'null', 'tinyint', 'smallint',
-        '12.991', '1.009', '-9.183',
-        'decimal',
+    numbers = {'null', 'tinyint',
+        '12.991', '1.009', '-9.183','0','-1','1'
     },
-    strings = {'null', 'letter', 'english'},
+    enum={'"y"','"b"','1','"x"','"null"'},
+    strings = {'"abc"', '"hello"', '"big"','"gg"','"dd"','"ee"','1','0','null'},
 }

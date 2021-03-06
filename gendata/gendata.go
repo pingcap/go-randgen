@@ -45,7 +45,7 @@ func (z *ZzConfig) genDdls() ([]*tableStmt, []*fieldExec, error) {
 		return nil, nil, err
 	}
 
-	fieldStmts, fieldExecs, err := z.Fields.gen()
+	fieldStmts, fieldExecs, err := z.Fields.gen(z)
 	if err != nil {
 		return nil, nil, err
 	}

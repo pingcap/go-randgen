@@ -3,11 +3,11 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/spf13/cobra"
 	"log"
 )
-
 
 var gendataDsns []string
 
@@ -30,7 +30,6 @@ func newGenDataCmd() *cobra.Command {
 	return gendataCmd
 }
 
-
 func gendataAction(cmd *cobra.Command, args []string) {
 	ddls, _ := getDdls()
 
@@ -47,6 +46,30 @@ func gendataAction(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Printf("Fatal Error: data prepare ddl exec error %v\n", err)
 		log.Fatalln(errSql)
+	}
+	if len(targetDbs) == 2 {
+		var tableNames []string
+		tiflashDb := targetDbs[1]
+		rows, err := tiflashDb.Query("show tables")
+		if err != nil {
+			log.Fatalln(err)
+		}
+		for rows.Next() {
+			if rows.Err() != nil {
+				log.Fatalln(err)
+			}
+			var tableName string
+			if err := rows.Scan(&tableName); err != nil {
+				log.Fatalln(err)
+			}
+			tableNames = append(tableNames, tableName)
+		}
+		for _, tn := range tableNames {
+			_, err := tiflashDb.Exec(fmt.Sprintf("ALTER TABLE %s SET TIFLASH REPLICA 1", tn))
+			if err != nil {
+				log.Fatalln(err)
+			}
+		}
 	}
 
 	log.Printf("generate data in:\n %v ok\n", gendataDsns)
