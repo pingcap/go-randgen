@@ -55,7 +55,7 @@ func initCmd() {
 
 	// driver
 	rootCmd.PersistentFlags().StringVarP(&dbms, "dbms", "D", "mysql",
-		"specify the DBMS driver, defult MySQL. Supported: mysql, sqlite3.")
+		"specify the DBMS driver, defult MySQL. Supported: mysql, sqlite3, postgres.")
 
 	rootCmd.AddCommand(newExecCmd())
 	rootCmd.AddCommand(newGentestCmd())
