@@ -233,6 +233,7 @@ type Keyfun map[string]func() (string, error)
 func joinFields(fields []*fieldExec) string {
 	strBuf := bytes.Buffer{}
 
+	// decode the quotation mark
 	for i, f := range fields {
 		if i == 0 {
 			strBuf.WriteRune('`')
