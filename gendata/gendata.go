@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/go-randgen/gendata/generators"
@@ -117,8 +118,11 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 	// support different databases
 	var rows *sql.Rows
 	var err error
+	dbms = strings.ToLower(dbms)
 
-	if dbms == "sqlite3" {
+	if dbms == "postgres" {
+		rows, err = db.Query("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public';")
+	} else if dbms == "sqlite3" {
 		rows, err = db.Query("SELECT name FROM sqlite_master WHERE type='table';")
 	} else if dbms == "mysql" {
 		rows, err = db.Query("show tables")
@@ -145,7 +149,11 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 	fieldExecs := make([]*fieldExec, 0)
 
 	if len(tableStmts) > 0 {
-		if dbms == "sqlite3" {
+		if dbms == "postgres" {
+			rows, err = db.Query(fmt.Sprintf("SELECT table_name, column_name, data_type \n"+
+				"FROM information_schema.columns \n"+
+				"WHERE table_name = '%s';", tableStmts[0].name))
+		} else if dbms == "sqlite3" {
 			rows, err = db.Query(fmt.Sprintf("PRAGMA table_info('%s');", tableStmts[0].name))
 		} else if dbms == "mysql" {
 			rows, err = db.Query(fmt.Sprintf("desc %s", tableStmts[0].name))
@@ -159,7 +167,9 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 
 		for rows.Next() {
 			var fieldName, fieldType string
-			if dbms == "sqlite3" {
+			if dbms == "postgres" {
+				err = rows.Scan(&sql.RawBytes{}, &fieldName, &fieldType)
+			} else if dbms == "sqlite3" {
 				err = rows.Scan(&sql.RawBytes{}, &fieldName,
 					&fieldType, &sql.RawBytes{},
 					&sql.RawBytes{}, &sql.RawBytes{})
@@ -223,6 +233,7 @@ type Keyfun map[string]func() (string, error)
 func joinFields(fields []*fieldExec) string {
 	strBuf := bytes.Buffer{}
 
+	// decode the quotation mark
 	for i, f := range fields {
 		if i == 0 {
 			strBuf.WriteRune('`')

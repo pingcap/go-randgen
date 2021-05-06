@@ -8,7 +8,6 @@ import (
 	"log"
 )
 
-
 var gendataDsns []string
 
 func newGenDataCmd() *cobra.Command {
@@ -30,13 +29,13 @@ func newGenDataCmd() *cobra.Command {
 	return gendataCmd
 }
 
-
 func gendataAction(cmd *cobra.Command, args []string) {
 	ddls, _ := getDdls()
 
 	targetDbs := make([]*sql.DB, 0, len(gendataDsns))
 	for _, dsn := range gendataDsns {
-		targetDb, err := compare.OpenDBWithRetry("mysql", dsn)
+		// fixed: change "mysql" -> dbms
+		targetDb, err := compare.OpenDBWithRetry(dbms, dsn)
 		if err != nil {
 			log.Fatalf("connect dsn1 %s error %v\n", dsn, err)
 		}

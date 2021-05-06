@@ -56,11 +56,10 @@ func gentestAction(cmd *cobra.Command, args []string) {
 	}
 
 	randomSqls := getRandSqls(keyf)
-
 	if breake {
 		if !skipZz {
 			err := ioutil.WriteFile(outPath+".data.sql",
-				[]byte(strings.Join(ddls, ";\n") + ";"), os.ModePerm)
+				[]byte(strings.Join(ddls, ";\n")+";"), os.ModePerm)
 			if err != nil {
 				log.Printf("write ddl in dist fail, %v\n", err)
 			}
@@ -72,8 +71,8 @@ func gentestAction(cmd *cobra.Command, args []string) {
 		allSqls = append(allSqls, ddls...)
 		allSqls = append(allSqls, randomSqls...)
 
-		err := ioutil.WriteFile(outPath + ".sql",
-			[]byte(strings.Join(allSqls, ";\n") + ";"), os.ModePerm)
+		err := ioutil.WriteFile(outPath+".sql",
+			[]byte(strings.Join(allSqls, ";\n")+";"), os.ModePerm)
 		if err != nil {
 			log.Printf("sql output error, %v\n", err)
 		}

@@ -55,7 +55,7 @@ func initCmd() {
 
 	// driver
 	rootCmd.PersistentFlags().StringVarP(&dbms, "dbms", "D", "mysql",
-		"specify the DBMS driver, defult MySQL. Supported: mysql, sqlite3.")
+		"specify the DBMS driver, defult MySQL. Supported: mysql, sqlite3, postgres.")
 
 	rootCmd.AddCommand(newExecCmd())
 	rootCmd.AddCommand(newGentestCmd())
@@ -137,6 +137,19 @@ func getIter(keyf gendata.Keyfun) sql_generator.SQLIterator {
 }
 
 func dumpRandSqls(sqls []string) {
+	// different SQL escape characters
+	/**
+	 * MySQL: `
+	 * PostgreSQL: "
+	 */
+	if strings.EqualFold(strings.ToLower(dbms), "postgres") {
+		for i, sql := range sqls {
+			sqls[i] = strings.ReplaceAll(
+				strings.ReplaceAll(sql, "\"", "'"), // strings
+				"`", "\"")                          // column names
+		}
+	}
+
 	path := outPath + ".rand.sql"
 	err := ioutil.WriteFile(path,
 		[]byte(strings.Join(sqls, ";\n")+";"), os.ModePerm)
