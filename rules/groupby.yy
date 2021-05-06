@@ -50,22 +50,23 @@ group_concat1:
     | group_concat(field_ret1_m order by field_ret1_m asc separator _english)
     | group_concat(field_ret1_m order by field_ret1_m desc separator _english)
 
+# 精度
 func_num:
     abs(
-    | acos(
-    | asin(
-    | atan(
+#    | acos(
+#    | asin(
+#    | atan(
     | ceil(
     | ceiling(
-    | cos(
-    | cot(
+#    | cos(
+#    | cot(
     | crc32(
     | floor(
     | round(
     | sign(
-    | sin(
-    | sqrt(
-    | tan(
+#    | sin(
+#    | sqrt(
+#    | tan(
     | isnull(
 
 value_random_num:
@@ -140,7 +141,7 @@ num_selection_expr:
     | condition_between
     | condition_in
     | condition_between
-    | condition_null
+#    | condition_null
 
 num_selection:
     num_selection_expr
@@ -199,6 +200,13 @@ cmm_agg_selection:
     | agg_func_para1(num_selection_d)
     | count(*)
 
+hint_func:
+    stream_agg() */
+    | hash_agg() */
+    | USE_TOJA(true) */
+    | USE_TOJA(false) */
+    | AGG_TO_COP() */
+
 # some query may error
 
 simple_group_by:
@@ -214,26 +222,16 @@ simple_group_by:
     | select cmm_agg_selection from _table group by field_ret1 having having_exp_l
 
 # sum avg
-    | select hint_begin stream_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1
-    | select hint_begin stream_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1 group by t1. _field
-    | select hint_begin stream_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1 having having_exp_l
-    | select hint_begin stream_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1 group by t1. _field having having_exp_l
+    | select hint_begin hint_func num_agg_func_distinct_para1( num_selection_d ) from _table as t1
+    | select hint_begin hint_func num_agg_func_distinct_para1( num_selection_d ) from _table as t1 group by t1. _field
+    | select hint_begin hint_func num_agg_func_distinct_para1( num_selection_d ) from _table as t1 having having_exp_l
+    | select hint_begin hint_func num_agg_func_distinct_para1( num_selection_d ) from _table as t1 group by t1. _field having having_exp_l
 # count max min
-    | select hint_begin stream_agg() */ cmm_agg_selection from _table as t1
-    | select hint_begin stream_agg() */ cmm_agg_selection from _table group by field_ret1
-    | select hint_begin stream_agg() */ cmm_agg_selection from _table having having_exp_l
-    | select hint_begin stream_agg() */ cmm_agg_selection from _table group by field_ret1 having having_exp_l
+    | select hint_begin hint_func cmm_agg_selection from _table as t1
+    | select hint_begin hint_func cmm_agg_selection from _table group by field_ret1
+    | select hint_begin hint_func cmm_agg_selection from _table having having_exp_l
+    | select hint_begin hint_func cmm_agg_selection from _table group by field_ret1 having having_exp_l
 
-# sum avg
-    | select hint_begin hash_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1
-    | select hint_begin hash_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1 group by t1. _field
-    | select hint_begin hash_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1 having having_exp_l
-    | select hint_begin hash_agg() */ num_agg_func_distinct_para1( num_selection_d ) from _table as t1 group by t1. _field having having_exp_l
-# count max min
-    | select hint_begin hash_agg() */ cmm_agg_selection from _table as t1
-    | select hint_begin hash_agg() */ cmm_agg_selection from _table group by field_ret1
-    | select hint_begin hash_agg() */ cmm_agg_selection from _table having having_exp_l
-    | select hint_begin hash_agg() */ cmm_agg_selection from _table group by field_ret1 having having_exp_l
 #    | select group_concat1 from _table
 #    | select group_concat1 from _table group by field_ret1_m
 
