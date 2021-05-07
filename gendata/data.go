@@ -20,6 +20,8 @@ const stringsType = "strings"
 // https://github.com/DQinYuan/randgenx/blob/master/lib/GenTest/App/Gendata.pm#L218
 // https://github.com/DQinYuan/randgenx/blob/master/lib/GenTest/App/Gendata.pm#L505
 var summaryType = map[string]string{
+	"tinyint":     numberType,
+	"smallint":     numberType,
 	"int":     numberType,
 	"bigint":  numberType,
 	"float":   numberType,

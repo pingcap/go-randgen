@@ -241,7 +241,59 @@ simple_group_by:
 # select sum(distinct a+b) from t group by a;
 # hash_agg stream_agg
 query:
-    simple_group_by
+    variable_set; simple_group_by
+
+variable_set:
+    set @@tidb_allow_batch_cop=0
+    | set @@tidb_allow_batch_cop=1
+    | set @@tidb_allow_batch_cop=2
+    | set @@tidb_allow_mpp=on
+    | set @@tidb_allow_mpp=off
+    | set @@tidb_broadcast_join_threshold_count=0
+    | set @@tidb_broadcast_join_threshold_count=1
+    | set @@tidb_broadcast_join_threshold_count=10240
+    | set @@tidb_broadcast_join_threshold_size=0
+    | set @@tidb_broadcast_join_threshold_size=1
+    | set @@tidb_broadcast_join_threshold_size=104857600
+    | set @@tidb_distsql_scan_concurrency=1
+    | set @@tidb_distsql_scan_concurrency=15
+    | set @@tidb_enable_cascades_planner=on
+    | set @@tidb_enable_cascades_planner=off
+    | set @@tidb_enable_chunk_rpc=on
+    | set @@tidb_enable_chunk_rpc=off
+    | set @@tidb_enable_index_merge=off
+    | set @@tidb_enable_index_merge=on
+    | set @@tidb_enable_parallel_apply=on
+    | set @@tidb_enable_parallel_apply=off
+    | set @@tidb_enable_vectorized_expression=on
+    | set @@tidb_enable_vectorized_expression=off
+    | set @@tidb_executor_concurrency=1
+    | set @@tidb_executor_concurrency=5
+    | set @@tidb_index_lookup_size=10
+    | set @@tidb_index_lookup_size=1
+    | set @@tidb_index_lookup_size=2000
+    | set @@tidb_index_serial_scan_concurrency=1
+    | set @@tidb_index_serial_scan_concurrency=10
+    | set @@tidb_init_chunk_size=1
+    | set @@tidb_init_chunk_size=3
+    | set @@tidb_init_chunk_size=32
+    | set @@tidb_max_chunk_size=32
+    | set @@tidb_max_chunk_size=1024
+    | set @@tidb_opt_agg_push_down=off
+    | set @@tidb_opt_agg_push_down=on
+    | set @@tidb_opt_correlation_exp_factor=0
+    | set @@tidb_opt_correlation_exp_factor=1
+    | set @@tidb_opt_correlation_threshold=0.9
+    | set @@tidb_opt_correlation_threshold=0.5
+    | set @@tidb_opt_distinct_agg_push_down=on
+    | set @@tidb_opt_distinct_agg_push_down=off
+    | set @@tidb_opt_insubq_to_join_and_agg=on
+    | set @@tidb_opt_insubq_to_join_and_agg=off
+    | set @@tidb_opt_prefer_range_scan=0
+    | set @@tidb_opt_prefer_range_scan=1
+
+
+
 
 hint_begin:
     /*+
