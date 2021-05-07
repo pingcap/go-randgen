@@ -1,0 +1,34 @@
+https://github.com/RQG/RQG-Documentation/wiki/RandomQueryGeneratorGrammar mysql randgen 语法介绍
+https://github.com/pingcap/go-randgen/blob/master/README-ZH.MD go-randgen 介绍
+; 语义继承自 mysql randgen， 表示一次性生成数条相邻的 sql
+把 sql 用分号隔开，放在一行上，可以执行多条 sql
+replicate_rand:
+   SET BINLOG_FORMAT = 'STATEMENT' ; INSERT INTO _table VALUES ( RAND() ) ; SET BINLOG_FORMAT = 'ROW' ;
+
+子查询的例子
+ select:
+ 	SELECT _field
+ 	FROM _table AS X
+ 	WHERE _field IN (
+ 		SELECT _field
+ 		FROM _table AS Y
+ 		WHERE X . _field = Y . _field
+ 	);
+
+go randgen 支持在文件的头部插入一个代码块，这个代码块在整个 sql 执行的过程中只会执行一次，称为头部代码块，主要用于变量或者函数的申明：
+可以在大括号（"{}"）的包围中写 lua 代码，调用 print 可以想要的内容拼接到 sql 中,通过大括号包围 lua 代码看起来会和 lua 本身的 table 语法相矛盾，
+但是你不用担心，我在解析的时候已经作了处理，可以放心大胆地 在代码块中使用 table 语法
+可以在 lua 代码块中用_xxx()的方式调用 yy 关键字
+query:{table = _table()}
+    BEGIN ; update ; select ; END
+
+update:
+    UPDATE {print(table)} SET _field_int = 10
+
+select:
+    SELECT * FROM {print(table)}
+
+order:
+    ASC
+    |   DESC
+    | # 空规则
