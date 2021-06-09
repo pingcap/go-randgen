@@ -9,7 +9,7 @@ type Char struct {
 }
 
 func NewChar(length int) *Char {
-	return &Char{length:length}
+	return &Char{length: length}
 }
 
 func (c *Char) Gen() string {
@@ -19,4 +19,3 @@ func (c *Char) Gen() string {
 	}
 	return `"` + string(b) + `"`
 }
-

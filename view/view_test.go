@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-
 func TestProductionToJson(t *testing.T) {
 
 	_, productions, pMap, err := grammar.Parse(`

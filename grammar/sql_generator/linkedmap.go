@@ -14,7 +14,7 @@ func (l *linkedMap) enter(key string) {
 	l.m[key]++
 }
 
-func (l *linkedMap) leave(key string)  {
+func (l *linkedMap) leave(key string) {
 	l.m[key]--
-	l.order = l.order[:len(l.order) - 1]
+	l.order = l.order[:len(l.order)-1]
 }

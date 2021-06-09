@@ -7,7 +7,7 @@ import (
 
 // reuse sql.DB object if have the same dsn
 type dbCache struct {
-	dbs map[string]*sql.DB
+	dbs   map[string]*sql.DB
 	mutex *sync.RWMutex
 }
 
@@ -32,6 +32,6 @@ func (d *dbCache) initDb(dsn string) (*sql.DB, error) {
 }
 
 var cache = &dbCache{
-	dbs:make(map[string]*sql.DB),
-	mutex:&sync.RWMutex{},
+	dbs:   make(map[string]*sql.DB),
+	mutex: &sync.RWMutex{},
 }

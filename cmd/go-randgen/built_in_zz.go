@@ -9,8 +9,8 @@ import (
 
 func newZzCmd() *cobra.Command {
 	buildInZzCmd := &cobra.Command{
-		Use:"zz",
-		Short:"print built-in zz",
+		Use:   "zz",
+		Short: "print built-in zz",
 		Run: func(cmd *cobra.Command, args []string) {
 			bytes, err := resource.Asset("resource/default.zz.lua")
 			if err != nil {

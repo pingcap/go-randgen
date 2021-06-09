@@ -24,7 +24,7 @@ var flag = []int{-1, 1}
 func (i *Int) Gen() string {
 	var intRes int
 	if i.max < i.min {
-		intRes =  flag[rand.Intn(len(flag))] * rand.Int()
+		intRes = flag[rand.Intn(len(flag))] * rand.Int()
 	} else {
 		intRes = randInRange(i.min, i.max)
 	}

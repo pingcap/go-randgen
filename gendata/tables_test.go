@@ -24,7 +24,7 @@ tables = {
 
 	assert.Equal(t, tables.numbers, len(stmts))
 
-/*	for _, stmt := range stmts {
+	/*	for _, stmt := range stmts {
 		fmt.Println("==========")
 		fmt.Println(stmt.format)
 		fmt.Println(stmt.rowNum)

@@ -8,9 +8,9 @@ import (
 )
 
 type ProductionView struct {
-	Number int  `json:"number"`
-	Head   string  `json:"head"`
-	Alter  []*SeqView  `json:"alter"`
+	Number int        `json:"number"`
+	Head   string     `json:"head"`
+	Alter  []*SeqView `json:"alter"`
 }
 
 type SeqView struct {
@@ -19,15 +19,15 @@ type SeqView struct {
 }
 
 type arraySet struct {
-	arr  []int
-	set  map[int]bool
+	arr []int
+	set map[int]bool
 }
 
 func newArraySet() *arraySet {
 	return &arraySet{arr: make([]int, 0), set: make(map[int]bool)}
 }
 
-func (a *arraySet) add(num int)  {
+func (a *arraySet) add(num int) {
 	if !a.set[num] {
 		a.arr = append(a.arr, num)
 		a.set[num] = true

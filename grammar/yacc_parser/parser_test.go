@@ -7,7 +7,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	next := Tokenize(&RuneSeq{Runes:[]rune(`sql_statement: simple_statement_or_begin EMPTY ';' 
+	next := Tokenize(&RuneSeq{Runes: []rune(`sql_statement: simple_statement_or_begin EMPTY ';' 
           opt_end_of_input
 		|simple_statement_or_begin END_OF_INPUT;
         |
@@ -27,11 +27,11 @@ func TestParse(t *testing.T) {
 	assert.Equal(t, 3, len(productions))
 
 	assertProduct(t, [][]string{
-		{"*yacc_parser.nonTerminal"},   // Head
+		{"*yacc_parser.nonTerminal"}, // Head
 		{"*yacc_parser.nonTerminal", "*yacc_parser.terminal",
-			"*yacc_parser.terminal", "*yacc_parser.nonTerminal"},   //Seq 0
-		{"*yacc_parser.nonTerminal", "*yacc_parser.terminal", "*yacc_parser.terminal"},   //Seq1
-		{"*yacc_parser.terminal"},                 // Seq2
+			"*yacc_parser.terminal", "*yacc_parser.nonTerminal"}, //Seq 0
+		{"*yacc_parser.nonTerminal", "*yacc_parser.terminal", "*yacc_parser.terminal"}, //Seq1
+		{"*yacc_parser.terminal"}, // Seq2
 	}, productions[0], 0)
 
 	assertProduct(t, [][]string{
@@ -72,7 +72,7 @@ func assertProduct(t *testing.T, expect [][]string, real *Production, expectNum 
 
 func TestPaserPrint(t *testing.T) {
 	t.SkipNow()
-	next := Tokenize(&RuneSeq{Runes:[]rune(`sql_statement: simple_statement_or_begin EMPTY ';' 
+	next := Tokenize(&RuneSeq{Runes: []rune(`sql_statement: simple_statement_or_begin EMPTY ';' 
           opt_end_of_input
 		|simple_statement_or_begin END_OF_INPUT;
         |

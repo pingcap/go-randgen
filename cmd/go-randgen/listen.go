@@ -13,22 +13,21 @@ var port int
 
 func newListenCmd() *cobra.Command {
 	listenCmd := &cobra.Command{
-		Use:"listen",
-		Short:"debug subcommand for /graph restful interface",
+		Use:   "listen",
+		Short: "debug subcommand for /graph restful interface",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if yyPath == "" {
 				return errors.New("yy are required")
 			}
 			return nil
 		},
-		Run:listenAction,
+		Run: listenAction,
 	}
 
 	listenCmd.Flags().IntVar(&port, "port", 43000, "the port to listen")
 
 	return listenCmd
 }
-
 
 func listenAction(cmd *cobra.Command, args []string) {
 	handler, err := view.Graph(loadYy())

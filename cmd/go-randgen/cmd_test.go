@@ -16,7 +16,6 @@ func executeCommandC(root *cobra.Command, args ...string) (c *cobra.Command,
 	root.SetArgs(args)
 	c, err = root.ExecuteC()
 
-
 	return c, buf.String(), err
 }
 

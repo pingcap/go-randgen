@@ -25,8 +25,8 @@ func init() {
 	gmap["digit"] = &Digit{}
 	gmap["letter"] = &Letter{}
 	/*  temporal
-    yyyy-MM-dd HH:mm:ss.SSS
-    */
+	    yyyy-MM-dd HH:mm:ss.SSS
+	*/
 	gmap["date"] = newTemporal(yyyy, dd)
 	gmap["year"] = newTemporal(yyyy, yyyy)
 	gmap["month"] = newTemporal(MM, MM)

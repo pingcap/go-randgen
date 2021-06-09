@@ -8,7 +8,6 @@ import (
 	"github.com/pingcap/go-randgen/grammar/yacc_parser"
 )
 
-
 func NewIter(yy string, root string, maxRecursive int,
 	keyFunc gendata.Keyfun, debug bool) (sql_generator.SQLIterator, error) {
 	return NewIterWithRander(yy, root, maxRecursive, keyFunc, nil, debug)

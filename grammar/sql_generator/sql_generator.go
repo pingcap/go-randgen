@@ -79,7 +79,7 @@ type SQLRandomlyIterator struct {
 	// path info
 	pathInfo     *PathInfo
 	maxRecursive int
-	rander      *rand.Rand
+	rander       *rand.Rand
 	debug        bool
 }
 

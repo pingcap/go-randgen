@@ -8,7 +8,6 @@ import (
 func TestLetter(t *testing.T) {
 	l := &Letter{}
 
-
 	for i := 0; i < 100; i++ {
 		assert.Condition(t, func() (success bool) {
 			res := l.Gen()

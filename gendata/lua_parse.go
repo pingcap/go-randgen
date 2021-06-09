@@ -49,7 +49,7 @@ func extractSlice(l *lua.LState, key1 string, key2 string, defaul []string) ([]s
 	return extractSliceTable(key2Table), nil
 }
 
-func extractAllSlice(l *lua.LState, key string) (map[string][]string, error)  {
+func extractAllSlice(l *lua.LState, key string) (map[string][]string, error) {
 	val := l.Env.RawGetString(key)
 	valTable, ok := val.(*lua.LTable)
 	if !ok {
@@ -70,4 +70,3 @@ func extractAllSlice(l *lua.LState, key string) (map[string][]string, error)  {
 
 	return res, err
 }
-

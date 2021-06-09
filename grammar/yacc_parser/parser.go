@@ -9,7 +9,7 @@ import (
 
 // token sequence of one branch
 type Seq struct {
-	Items   []Token
+	Items []Token
 	// production the Seq belong to
 	PNumber int
 	// number of the Seq in the production
@@ -50,7 +50,7 @@ type Production struct {
 }
 
 func NewProduction(head Token, pNumber int) (prod *Production, nextP int) {
-	return &Production{Head:head, Number:pNumber}, pNumber+1
+	return &Production{Head: head, Number: pNumber}, pNumber + 1
 }
 
 func (p *Production) AppendSeq(s *Seq) {

@@ -32,8 +32,8 @@ data = {
 				tp:   "enum",
 			},
 			{
-				name:"",
-				tp: "enum",
+				name: "",
+				tp:   "enum",
 			},
 		})
 
@@ -41,9 +41,5 @@ data = {
 
 		recordGen.oneRow(row)
 	})
-
-
-
-
 
 }
