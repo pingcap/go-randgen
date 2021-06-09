@@ -1,8 +1,8 @@
 package gendata
 
 import (
-	"github.com/yuin/gopher-lua"
 	"github.com/pingcap/go-randgen/gendata/generators"
+	"github.com/yuin/gopher-lua"
 	"log"
 	"math/rand"
 	"runtime/debug"
@@ -41,24 +41,24 @@ var summaryType = map[string]string{
 
 var defaultData = []*varWithDefault{
 	{
-		name:numberType,
-		defaul:[]string{"digit", "digit", "digit", "digit", "null"},
+		name:   numberType,
+		defaul: []string{"digit", "digit", "digit", "digit", "null"},
 	},
 	{
-		name:stringsType,
-		defaul:[]string{"letter", "letter", "letter", "letter", "null"},
+		name:   stringsType,
+		defaul: []string{"letter", "letter", "letter", "letter", "null"},
 	},
 	{
-		name:blobsType,
-		defaul:[]string{"letter", "letter", "letter", "letter", "null"},
+		name:   blobsType,
+		defaul: []string{"letter", "letter", "letter", "letter", "null"},
 	},
 	{
-		name:temporalType,
-		defaul:[]string{"date", "time", "datetime", "year", "timestamp", "null"},
+		name:   temporalType,
+		defaul: []string{"date", "time", "datetime", "year", "timestamp", "null"},
 	},
 	{
-		name:enumType,
-		defaul:[]string{"letter", "letter", "letter", "letter", "null"},
+		name:   enumType,
+		defaul: []string{"letter", "letter", "letter", "letter", "null"},
 	},
 }
 
@@ -87,7 +87,7 @@ func newData(l *lua.LState) (*Data, error) {
 	return &Data{gens}, nil
 }
 
-func composeFromGenName(genNames []string ) generators.Generator {
+func composeFromGenName(genNames []string) generators.Generator {
 	gs := make([]generators.Generator, 0)
 	for _, gName := range genNames {
 		gor := generators.Get(gName)
@@ -145,7 +145,7 @@ func (d *Data) getRecordGen(fields []*fieldExec) recordGen {
 
 type recordGen []generators.Generator
 
-func (r recordGen) oneRow(row []string)  {
+func (r recordGen) oneRow(row []string) {
 	if len(r) != len(row) {
 		log.Fatalf("record gen illegal, expect len: %d, real row container len %d\n",
 			len(r), len(row))
@@ -173,9 +173,9 @@ func (c *constGen) Gen() string {
 }
 
 type unsignGen struct {
-	gen generators.Generator
+	gen      generators.Generator
 	retryNum int
-	defaul string
+	defaul   string
 }
 
 func (u *unsignGen) Gen() string {

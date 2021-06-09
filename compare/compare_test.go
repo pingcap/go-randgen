@@ -87,7 +87,7 @@ Test follow situations:
  4. no err, rows is inconsistent
  5. no err, record num is inconsistent
  6. no err, row is non order
- */
+*/
 var mqs = []*mockQuery{
 	// 1 both query err
 	{
@@ -234,7 +234,7 @@ func TestByDb(t *testing.T) {
 	})
 }
 
-func TestSimplePrint(t *testing.T)  {
+func TestSimplePrint(t *testing.T) {
 	t.SkipNow()
 	sql := `SELECT * FROM table_90_utf8_6`
 

@@ -74,7 +74,6 @@ func TestUpdateSql(t *testing.T) {
 	err = os.Remove("./upda.data.sql")
 }
 
-
 func TestSeed(t *testing.T) {
 
 	for i := 0; i < 10; i++ {

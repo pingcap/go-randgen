@@ -55,7 +55,7 @@ func TestExtractAllSlice(t *testing.T) {
 
 	numbers, ok := content["numbers"]
 	assert.Equal(t, true, ok)
-	assert.Equal(t, []string{"null", "tinyint", "smallint","12.991"}, numbers)
+	assert.Equal(t, []string{"null", "tinyint", "smallint", "12.991"}, numbers)
 
 	strings, ok := content["strings"]
 	assert.Equal(t, true, ok)

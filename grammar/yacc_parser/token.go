@@ -110,10 +110,10 @@ const (
 	inOneLineComment
 	inComment
 	inCodeBlock
-	inCodeBlockStr                // in lua string
-	inCodeBlockSingleLineComment  // in lua single line comment
+	inCodeBlockStr               // in lua string
+	inCodeBlockSingleLineComment // in lua single line comment
 	prepareCodeBlockMultiLineComment
-	inCodeBlockMultiLineComment  // in lua multiline comment
+	inCodeBlockMultiLineComment // in lua multiline comment
 	endCodeBlockMultiLineComment
 	inKeyWord
 	inNonTerminal
@@ -305,7 +305,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 			case inComment:
 				if err == io.EOF {
 					state = inTerminal
-					reader.SetPos(lookBackPos+1)
+					reader.SetPos(lookBackPos + 1)
 					continue
 				}
 				if reader.LastEqual('*') && r == '/' {
@@ -315,7 +315,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 				// look back
 				if err == io.EOF || r == '\n' {
 					state = inTerminal
-					reader.SetPos(lookBackPos+1)
+					reader.SetPos(lookBackPos + 1)
 					continue
 				}
 				if r == '\'' {
@@ -326,7 +326,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 				// look back
 				if err == io.EOF || r == '\n' {
 					state = inTerminal
-					reader.SetPos(lookBackPos+1)
+					reader.SetPos(lookBackPos + 1)
 					continue
 				}
 				if r == '"' {
@@ -338,7 +338,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 				// look back
 				if err == io.EOF {
 					state = inTerminal
-					reader.SetPos(lookBackPos+1)
+					reader.SetPos(lookBackPos + 1)
 					stack.Clear()
 					continue
 				}
@@ -361,7 +361,7 @@ func Tokenize(reader *RuneSeq) func() (Token, error) {
 			case inCodeBlockStr:
 				if err == io.EOF {
 					state = inTerminal
-					reader.SetPos(lookBackPos+1)
+					reader.SetPos(lookBackPos + 1)
 					stack.Clear()
 					continue
 				}

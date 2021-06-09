@@ -19,7 +19,6 @@ import (
 	compare.OpenDBWithRetry = oldOpenDB
 }*/
 
-
 func TestGenData(t *testing.T) {
 	t.Run("test empty dsn", func(t *testing.T) {
 		reInitCmd()

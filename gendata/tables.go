@@ -12,9 +12,9 @@ type Tables struct {
 	*options
 }
 
-var tablesTmpl = mustParse("tables", "create table {{.tname}} (\n" +
-"`pk` int primary key%s\n" +
-") {{.charsets}} {{.partitions}}")
+var tablesTmpl = mustParse("tables", "create table {{.tname}} (\n"+
+	"`pk` int primary key%s\n"+
+	") {{.charsets}} {{.partitions}}")
 
 // support vars
 var tablesVars = []*varWithDefault{
@@ -118,7 +118,7 @@ type tableStmt struct {
 	// create statement without field part
 	format string
 	// table name
-	name string
+	name   string
 	rowNum int
 	// generate by wrapInTable
 	ddl string

@@ -43,11 +43,11 @@ var tplComponents = []genAndPrefix{
 		newInt(0, 23, "%.2d"), // hour
 		" ",
 	},
-    {
+	{
 		newInt(0, 59, "%.2d"), //minute
 		":",
 	},
-    {
+	{
 		newInt(0, 59, "%.2d"), //second
 		":",
 	},
@@ -65,7 +65,7 @@ func (t *Temporal) Gen() string {
 	buf := &bytes.Buffer{}
 	buf.WriteString(tplComponents[t.from].gen.Gen())
 
-	for i := t.from+1; i <= t.to; i++ {
+	for i := t.from + 1; i <= t.to; i++ {
 		genpre := tplComponents[i]
 		buf.WriteString(genpre.prefix + genpre.gen.Gen())
 	}

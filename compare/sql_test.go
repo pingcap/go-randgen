@@ -12,8 +12,8 @@ import (
 
 func TestSqlResult_BytesEqualTo(t *testing.T) {
 	var mockRes1 = &SqlResult{
-		Header:[]string{"aaa", "bbbb"},
-		Data:[][][]byte{
+		Header: []string{"aaa", "bbbb"},
+		Data: [][][]byte{
 			{
 				[]byte("haha"),
 				[]byte("baba"),
@@ -26,8 +26,8 @@ func TestSqlResult_BytesEqualTo(t *testing.T) {
 	}
 
 	var mockRes2 = &SqlResult{
-		Header:[]string{"aaa", "bbbb"},
-		Data:[][][]byte{
+		Header: []string{"aaa", "bbbb"},
+		Data: [][][]byte{
 			{
 				[]byte("haha"),
 				[]byte("baba"),
@@ -40,8 +40,8 @@ func TestSqlResult_BytesEqualTo(t *testing.T) {
 	}
 
 	var mockRes3 = &SqlResult{
-		Header:[]string{"aaa", "bbbb"},
-		Data:[][][]byte{
+		Header: []string{"aaa", "bbbb"},
+		Data: [][][]byte{
 			{
 				[]byte("mmmm"),
 				[]byte("popo"),
@@ -147,10 +147,7 @@ func TestExecSqlsInDbs(t *testing.T) {
 
 }
 
-
-
-
-func TestQueryMysql(t *testing.T)  {
+func TestQueryMysql(t *testing.T) {
 	t.SkipNow()
 	db, err := OpenDBWithRetry("mysql", "root:123456@tcp(127.0.0.1:3306)/randgen")
 	assert.Equal(t, nil, err)

@@ -28,8 +28,8 @@ func TestGetColorDiff(t *testing.T) {
 }
 
 var mockRes1 = &compare.SqlResult{
-	Header:[]string{"aaa", "bbbb"},
-	Data:[][][]byte{
+	Header: []string{"aaa", "bbbb"},
+	Data: [][][]byte{
 		{
 			[]byte("haha"),
 			[]byte("baba"),
@@ -41,18 +41,17 @@ var mockRes1 = &compare.SqlResult{
 	},
 }
 
-
 func TestDumpInfo(t *testing.T) {
 	info := &dumpInfo{
-		num:1,
-		sql:"select * from test",
-		dsn1:"xxx:password@protocol(address)/dbname",
-		dsn2:"yyy:password@protocol(address)/dbname",
-		dsn1Res:&compare.QueryDsnRes{
-			Res:mockRes1,
+		num:  1,
+		sql:  "select * from test",
+		dsn1: "xxx:password@protocol(address)/dbname",
+		dsn2: "yyy:password@protocol(address)/dbname",
+		dsn1Res: &compare.QueryDsnRes{
+			Res: mockRes1,
 		},
-		dsn2Res:&compare.QueryDsnRes{
-			Res:mockRes1,
+		dsn2Res: &compare.QueryDsnRes{
+			Res: mockRes1,
 		},
 	}
 

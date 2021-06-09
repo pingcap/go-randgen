@@ -47,8 +47,8 @@ query:
 				return false
 			},
 			randerCase: &randerCase{
-				rander:rander,
-				expSeq:[]string{
+				rander: rander,
+				expSeq: []string{
 					"0",
 					"0",
 					"3",
@@ -174,7 +174,7 @@ query:{table = _table()}
 			if c.randerCase != nil { //case with rander
 				rCase := c.randerCase
 				randIter, err := NewIterWithRander(c.yy, "query", 5,
-					c.keyFun, rCase.rander,false)
+					c.keyFun, rCase.rander, false)
 				assert.Equal(t, nil, err)
 
 				randIter.Visit(sql_generator.FixedTimesVisitor(func(i int, sql string) {
