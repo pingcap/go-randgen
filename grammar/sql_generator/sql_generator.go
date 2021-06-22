@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/pingcap/go-randgen/gendata"
-	"github.com/pingcap/go-randgen/grammar/yacc_parser"
-	"github.com/yuin/gopher-lua"
 	"io"
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/pingcap/go-randgen/gendata"
+	"github.com/pingcap/go-randgen/grammar/yacc_parser"
+	"github.com/yuin/gopher-lua"
 )
 
 type BranchAnalyze struct {

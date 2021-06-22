@@ -2,10 +2,11 @@ package gendata
 
 import (
 	"bytes"
-	"github.com/pingcap/errors"
-	"github.com/yuin/gopher-lua"
 	"log"
 	"text/template"
+
+	"github.com/pingcap/errors"
+	"github.com/yuin/gopher-lua"
 )
 
 type varWithDefault struct {

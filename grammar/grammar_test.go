@@ -2,11 +2,12 @@ package grammar
 
 import (
 	"fmt"
+	"math/rand"
+	"testing"
+
 	"github.com/pingcap/go-randgen/gendata"
 	"github.com/pingcap/go-randgen/grammar/sql_generator"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
-	"testing"
 )
 
 type randerCase struct {

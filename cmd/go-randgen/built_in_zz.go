@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/pingcap/go-randgen/resource"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 func newZzCmd() *cobra.Command {

@@ -1,9 +1,10 @@
 package gendata
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/yuin/gopher-lua"
-	"testing"
 )
 
 var testLuaScript = `

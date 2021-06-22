@@ -1,9 +1,10 @@
 package view
 
 import (
+	"testing"
+
 	"github.com/pingcap/go-randgen/grammar"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestProductionToJson(t *testing.T) {

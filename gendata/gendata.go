@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"math/rand"
+	"strconv"
+	"strings"
+
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/go-randgen/gendata/generators"
 	"github.com/pingcap/go-randgen/resource"
 	"github.com/yuin/gopher-lua"
-	"math/rand"
-	"strconv"
-	"strings"
 )
 
 type ZzConfig struct {

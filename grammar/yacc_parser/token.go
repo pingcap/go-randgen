@@ -1,10 +1,11 @@
 package yacc_parser
 
 import (
-	"github.com/emirpasic/gods/stacks/arraystack"
-	"github.com/pkg/errors"
 	"io"
 	"unicode"
+
+	"github.com/emirpasic/gods/stacks/arraystack"
+	"github.com/pkg/errors"
 )
 
 type Token interface {
