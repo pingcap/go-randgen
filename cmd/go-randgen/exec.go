@@ -4,17 +4,18 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"math"
+	"os"
+	"path/filepath"
+
 	"github.com/fatih/color"
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/pingcap/go-randgen/gendata"
 	"github.com/pingcap/go-randgen/grammar/sql_generator"
 	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	"log"
-	"math"
-	"os"
-	"path/filepath"
 )
 
 var dsn1 string

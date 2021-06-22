@@ -3,11 +3,12 @@ package compare
 import (
 	"database/sql"
 	"fmt"
+	"runtime"
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"runtime"
-	"testing"
 )
 
 func TestSqlResult_BytesEqualTo(t *testing.T) {

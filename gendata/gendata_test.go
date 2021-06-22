@@ -1,9 +1,10 @@
 package gendata
 
 import (
+	"testing"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestGenDdls(t *testing.T) {

@@ -2,9 +2,10 @@ package yacc_parser
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	_ "net/http/pprof"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTokenize(t *testing.T) {

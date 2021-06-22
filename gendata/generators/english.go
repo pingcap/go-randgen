@@ -1,11 +1,12 @@
 package generators
 
 import (
-	"github.com/pingcap/go-randgen/resource"
 	"log"
 	"math/rand"
 	"runtime/debug"
 	"strings"
+
+	"github.com/pingcap/go-randgen/resource"
 )
 
 type English struct {

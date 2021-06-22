@@ -2,8 +2,9 @@ package gendata
 
 import (
 	"fmt"
-	"github.com/yuin/gopher-lua"
 	"strings"
+
+	"github.com/yuin/gopher-lua"
 )
 
 var fieldsTmpl = mustParse("fields", "`{{.fname}}` {{.types}} {{.sign}} {{.keys}}")

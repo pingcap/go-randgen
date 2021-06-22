@@ -2,16 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/pingcap/go-randgen/gendata"
-	"github.com/pingcap/go-randgen/grammar"
-	"github.com/pingcap/go-randgen/grammar/sql_generator"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/pingcap/go-randgen/gendata"
+	"github.com/pingcap/go-randgen/grammar"
+	"github.com/pingcap/go-randgen/grammar/sql_generator"
+	"github.com/spf13/cobra"
 )
 
 var zzPath string

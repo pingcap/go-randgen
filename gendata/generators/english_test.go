@@ -1,9 +1,10 @@
 package generators
 
 import (
+	"testing"
+
 	"github.com/magiconair/properties/assert"
 	assert2 "github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestEnglish(t *testing.T) {

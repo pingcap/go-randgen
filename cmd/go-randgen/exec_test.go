@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestExecErr(t *testing.T) {

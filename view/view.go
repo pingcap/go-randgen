@@ -2,9 +2,10 @@ package view
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/pingcap/go-randgen/grammar"
 	"github.com/pingcap/go-randgen/grammar/yacc_parser"
-	"net/http"
 )
 
 type ProductionView struct {

@@ -3,9 +3,10 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"log"
+
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 var gendataDsns []string

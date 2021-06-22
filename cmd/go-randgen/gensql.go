@@ -2,11 +2,12 @@ package main
 
 import (
 	"errors"
+	"log"
+	"math"
+
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/pingcap/go-randgen/gendata"
 	"github.com/spf13/cobra"
-	"log"
-	"math"
 )
 
 var gensqlDsn string

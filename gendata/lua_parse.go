@@ -2,6 +2,7 @@ package gendata
 
 import (
 	"fmt"
+
 	"github.com/yuin/gopher-lua"
 )
 

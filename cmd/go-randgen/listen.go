@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/pingcap/go-randgen/view"
-	"github.com/spf13/cobra"
 	"log"
 	"net/http"
+
+	"github.com/pingcap/go-randgen/view"
+	"github.com/spf13/cobra"
 )
 
 var port int

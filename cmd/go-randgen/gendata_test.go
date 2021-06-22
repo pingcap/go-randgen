@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/magiconair/properties/assert"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 )
 
 /*func monkeyOpenDB(test func()) {

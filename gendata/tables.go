@@ -3,9 +3,10 @@ package gendata
 import (
 	"bytes"
 	"fmt"
-	"github.com/yuin/gopher-lua"
 	"strconv"
 	"strings"
+
+	"github.com/yuin/gopher-lua"
 )
 
 type Tables struct {

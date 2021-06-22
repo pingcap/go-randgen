@@ -1,12 +1,13 @@
 package gendata
 
 import (
-	"github.com/pingcap/go-randgen/gendata/generators"
-	"github.com/yuin/gopher-lua"
 	"log"
 	"math/rand"
 	"runtime/debug"
 	"strings"
+
+	"github.com/pingcap/go-randgen/gendata/generators"
+	"github.com/yuin/gopher-lua"
 )
 
 const numberType = "numbers"
