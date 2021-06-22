@@ -1,5 +1,5 @@
 
-all:resource test bin
+all:resource test bin format
 
 resource:
 	go generate ./resource
@@ -20,4 +20,7 @@ debug:
 darwin: # cross compile to mac
 	GOOS=darwin GOARCH=amd64 go build -o go-randgen-darwin cmd/go-randgen/*.go
 
-.PHONY: all resource bin test debug darwin
+format:
+	go fmt ./...
+
+.PHONY: all resource bin test debug darwin format
