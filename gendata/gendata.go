@@ -210,6 +210,8 @@ var fClass = map[string]int{
 	"varchar":   fChar,
 	"binary":    fChar,
 	"varbinary": fChar,
+	"enum":      fChar,
+	"set":       fChar,
 	"integer":   fInt,
 	"int":       fInt,
 	"smallint":  fInt,

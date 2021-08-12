@@ -37,11 +37,11 @@ var canUnSign = map[string]bool{
 	"decimal":   true,
 }
 
-const enumVals = "('y','b','1','x','0','null')"
+const enumVals = "('y','b','Abc','null')"
 
-var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec,z *ZzConfig) (target string,
+var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec, z *ZzConfig) (target string,
 	ignore bool, extraStmt *string, err error){
-	"types": func(text string, fname string, ctx *fieldExec,z *ZzConfig) (string, bool, *string, error) {
+	"types": func(text string, fname string, ctx *fieldExec, z *ZzConfig) (string, bool, *string, error) {
 		index := strings.Index(text, "(")
 		var tp string
 		if index != -1 {
@@ -58,7 +58,7 @@ var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec,z *Zz
 		}
 		return text, false, nil, nil
 	},
-	"keys": func(text string, fname string, ctx *fieldExec,z *ZzConfig) (string, bool, *string, error) {
+	"keys": func(text string, fname string, ctx *fieldExec, z *ZzConfig) (string, bool, *string, error) {
 		if text == "undef" {
 			return "", false, nil, nil
 		}
@@ -66,7 +66,7 @@ var fieldFuncs = map[string]func(text string, fname string, ctx *fieldExec,z *Zz
 		return "", false, &extraStmt, nil
 	},
 	// "signed" is sign, other is "unsigned"
-	"sign": func(text string, fname string, ctx *fieldExec,z *ZzConfig) (string, bool, *string, error) {
+	"sign": func(text string, fname string, ctx *fieldExec, z *ZzConfig) (string, bool, *string, error) {
 		if ctx.canUnSign {
 			if text == "signed" {
 				return "", false, nil, nil
@@ -94,7 +94,7 @@ func newFields(l *lua.LState) (*Fields, error) {
 	return &Fields{o}, nil
 }
 
-func (f *Fields) gen(z* ZzConfig) ([]string, []*fieldExec, error) {
+func (f *Fields) gen(z *ZzConfig) ([]string, []*fieldExec, error) {
 	fnamePrefix := "col"
 
 	m := make(map[string]string)
@@ -113,7 +113,7 @@ func (f *Fields) gen(z* ZzConfig) ([]string, []*fieldExec, error) {
 			if field == "types" {
 				fExec.tp = strings.ToLower(cur[i])
 			}
-			target, ignore, extraStmt, err := fieldFuncs[field](cur[i], fname, fExec,z)
+			target, ignore, extraStmt, err := fieldFuncs[field](cur[i], fname, fExec, z)
 			if err != nil {
 				return err
 			}

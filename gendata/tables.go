@@ -12,9 +12,9 @@ type Tables struct {
 	*options
 }
 
-var tablesTmpl = mustParse("tables", "create table {{.tname}} (\n" +
-"`pk` int primary key%s\n" +
-") {{.charsets}} {{.partitions}}")
+var tablesTmpl = mustParse("tables", "create table {{.tname}} (\n"+
+	"`pk` int primary key%s\n"+
+	") {{.charsets}} {{.partitions}}")
 
 // support vars
 var tablesVars = []*varWithDefault{
@@ -86,7 +86,15 @@ func (t *Tables) gen() ([]*tableStmt, error) {
 			// current field name: fields[i]
 			// current field value: curr[i]
 			field := t.fields[i]
-			buf.WriteString("_" + cur[i])
+			tmpCur := cur[i]
+			if field == "charsets" {
+				charsetCollation := strings.Fields(cur[i])
+				// define charset and collation
+				if len(charsetCollation) >= 2 {
+					tmpCur = strings.ReplaceAll(strings.Join(charsetCollation, ""), "=", "_")
+				}
+			}
+			buf.WriteString("_" + tmpCur)
 			target, err := tableFuncs[field](cur[i], stmt)
 			if err != nil {
 				return err
@@ -118,7 +126,7 @@ type tableStmt struct {
 	// create statement without field part
 	format string
 	// table name
-	name string
+	name   string
 	rowNum int
 	// generate by wrapInTable
 	ddl string

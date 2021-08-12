@@ -15,7 +15,7 @@ require (
 	github.com/creack/pty v1.1.9 // indirect
 	github.com/emirpasic/gods v1.12.0
 	github.com/fatih/color v1.7.0
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
