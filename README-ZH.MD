@@ -470,7 +470,7 @@ select:
     SELECT * FROM {print(table)}
 ```
 
-上面这种写法将能够保证 `update` 和 `selet` 的是同一张随即表。
+上面这种写法将能够保证 `update` 和 `select` 的是同一张随即表。
 
 #### 常用模式
 
