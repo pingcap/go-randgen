@@ -13,7 +13,7 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/go-randgen/gendata/generators"
 	"github.com/pingcap/go-randgen/resource"
-	"github.com/yuin/gopher-lua"
+	lua "github.com/yuin/gopher-lua"
 )
 
 type ZzConfig struct {
@@ -101,7 +101,6 @@ func ByConfig(config *ZzConfig) ([]string, Keyfun, error) {
 		}
 		sqls = append(sqls, wrapInInsert(tableStmt.name, valuesStmt))
 	}
-
 	return sqls, NewKeyfun(tableStmts, fieldExecs), nil
 }
 
@@ -214,6 +213,10 @@ func wrapInDml(pk string, data []string) string {
 const (
 	fInt = iota
 	fChar
+	fDate
+	fYear
+	fTime
+	fDateTime
 )
 
 var fClass = map[string]int{
@@ -227,6 +230,10 @@ var fClass = map[string]int{
 	"tinyint":   fInt,
 	"mediumint": fInt,
 	"bigint":    fInt,
+	"date":      fDate,
+	"year":      fYear,
+	"time":      fTime,
+	"datetime":  fDateTime,
 }
 
 type Keyfun map[string]func() (string, error)
@@ -257,6 +264,10 @@ var field_invariant = ""
 func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 	fieldsInt := make([]*fieldExec, 0)
 	fieldsChar := make([]*fieldExec, 0)
+	fieldsDate := make([]*fieldExec, 0)
+	fieldsYear := make([]*fieldExec, 0)
+	fieldsTime := make([]*fieldExec, 0)
+	fieldsDateTime := make([]*fieldExec, 0)
 
 	for _, fieldExec := range fields {
 		if class, ok := fClass[fieldExec.dType()]; ok {
@@ -265,6 +276,14 @@ func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 				fieldsInt = append(fieldsInt, fieldExec)
 			case fChar:
 				fieldsChar = append(fieldsChar, fieldExec)
+			case fDate:
+				fieldsDate = append(fieldsDate, fieldExec)
+			case fYear:
+				fieldsYear = append(fieldsYear, fieldExec)
+			case fTime:
+				fieldsTime = append(fieldsTime, fieldExec)
+			case fDateTime:
+				fieldsDateTime = append(fieldsDateTime, fieldExec)
 			}
 		}
 	}
@@ -300,6 +319,30 @@ func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 				return "", errors.New("there is no int fields")
 			}
 			return "`" + fieldsInt[rand.Intn(len(fieldsInt))].name + "`", nil
+		},
+		"_field_date": func() (string, error) {
+			if len(fieldsDate) == 0 {
+				return "", errors.New("there is no date fields")
+			}
+			return "`" + fieldsDate[rand.Intn(len(fieldsDate))].name + "`", nil
+		},
+		"_field_year": func() (string, error) {
+			if len(fieldsYear) == 0 {
+				return "", errors.New("there is no year fields")
+			}
+			return "`" + fieldsYear[rand.Intn(len(fieldsYear))].name + "`", nil
+		},
+		"_field_time": func() (string, error) {
+			if len(fieldsTime) == 0 {
+				return "", errors.New("there is no time fields")
+			}
+			return "`" + fieldsTime[rand.Intn(len(fieldsTime))].name + "`", nil
+		},
+		"_field_datetime": func() (string, error) {
+			if len(fieldsDateTime) == 0 {
+				return "", errors.New("there is no date time fields")
+			}
+			return "`" + fieldsDateTime[rand.Intn(len(fieldsDateTime))].name + "`", nil
 		},
 		"_field_int_list": func() (s string, e error) {
 			if len(fieldsInt) == 0 {
