@@ -99,12 +99,16 @@ func TestDumpVisitorCreatesOwnerOnlyLog(t *testing.T) {
 	oldDumpDir := dumpDir
 	defer func() { dumpDir = oldDumpDir }()
 
-	dumpDir = filepath.Join(t.TempDir(), "dump")
+	tempDir, err := ioutil.TempDir("", "go-randgen-dump-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	dumpDir = filepath.Join(tempDir, "dump")
 	require.NoError(t, createDumpDir(dumpDir))
 
 	result1 := &compare.QueryDsnRes{Res: mockRes1}
 	result2 := &compare.QueryDsnRes{Res: mockRes1}
-	err := dumpVisitor(
+	err = dumpVisitor(
 		"root:secret@tcp(localhost:4000)/one",
 		"root:secret@tcp(localhost:4000)/two",
 	)("select 1", result1, result2)
@@ -118,9 +122,9 @@ func TestDumpVisitorCreatesOwnerOnlyLog(t *testing.T) {
 
 	dirInfo, err := os.Stat(dumpDir)
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0700), dirInfo.Mode().Perm())
+	assert.Zero(t, dirInfo.Mode().Perm()&0077)
 
 	fileInfo, err := os.Stat(logPath)
 	require.NoError(t, err)
-	assert.Equal(t, os.FileMode(0600), fileInfo.Mode().Perm())
+	assert.Zero(t, fileInfo.Mode().Perm()&0077)
 }

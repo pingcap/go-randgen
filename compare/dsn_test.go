@@ -43,6 +43,24 @@ func TestRedactDSN(t *testing.T) {
 			secret: "top secret",
 		},
 		{
+			name:   "postgres keywords with escaped space",
+			dsn:    "user=alice password=top\\ secret host=db.example.com dbname=app",
+			want:   "user=alice password=****** host=db.example.com dbname=app",
+			secret: "secret",
+		},
+		{
+			name:   "postgres keywords with escaped quote",
+			dsn:    "user=alice password='foo\\'bar' host=db.example.com dbname=app",
+			want:   "user=alice password='******' host=db.example.com dbname=app",
+			secret: "bar",
+		},
+		{
+			name:   "malformed postgres keywords",
+			dsn:    "user=alice password='unterminated",
+			want:   "<redacted-dsn>",
+			secret: "unterminated",
+		},
+		{
 			name: "unknown",
 			dsn:  "opaque-secret-value",
 			want: "<redacted-dsn>",
