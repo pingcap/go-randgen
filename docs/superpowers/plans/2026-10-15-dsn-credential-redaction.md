@@ -80,19 +80,19 @@ Expected: PASS.
 - Modify: `cmd/go-randgen/gensql.go:41-47`
 - Modify: `cmd/go-randgen/gendata.go:33-53`
 
-- [ ] **Step 1: Write failing dump-content and permission tests**
+- [x] **Step 1: Write failing dump-content and permission tests**
 
 Change `TestDumpInfo` so its literal expected output contains `******`, then assert the plaintext password is absent.
 
 Add `TestDumpVisitorCreatesOwnerOnlyLog` using `t.TempDir()` and real filesystem operations. It will call `createDumpDir`, invoke `dumpVisitor` with password-bearing DSNs, read `0.log`, assert that the password is absent and `******` is present, and assert directory/file permission bits are exactly `0700`/`0600`. The production mutations this catches are raw dump headings and group/other-readable artifacts.
 
-- [ ] **Step 2: Run command-package tests and verify RED**
+- [x] **Step 2: Run command-package tests and verify RED**
 
 Run: `go test ./cmd/go-randgen -run 'TestDumpInfo|TestDumpVisitorCreatesOwnerOnlyLog' -count=1`
 
 Expected: `TestDumpInfo` exposes plaintext and `createDumpDir` is undefined.
 
-- [ ] **Step 3: Apply redaction at every output boundary**
+- [x] **Step 3: Apply redaction at every output boundary**
 
 - In `compare/sql.go`, calculate `safeDSN := RedactDSN(dataSourceName)` and use it in all retry/failure messages; continue passing `dataSourceName` to `sql.Open`.
 - In `dumpInfo.String`, build headings from `compare.RedactDSN(dump.dsn1)` and `compare.RedactDSN(dump.dsn2)`.
@@ -101,7 +101,7 @@ Expected: `TestDumpInfo` exposes plaintext and `createDumpDir` is undefined.
 - In all command failure logs, format only `compare.RedactDSN(...)`.
 - Build a redacted slice before the `gendata` success message so `%v` cannot print the raw slice.
 
-- [ ] **Step 4: Run focused package tests and verify GREEN**
+- [x] **Step 4: Run focused package tests and verify GREEN**
 
 Run `go test ./compare -run TestRedactDSN -count=1`, then run `go test ./cmd/go-randgen -run 'TestDumpInfo|TestDumpVisitorCreatesOwnerOnlyLog' -count=1`.
 

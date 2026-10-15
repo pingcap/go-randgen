@@ -38,7 +38,7 @@ func gendataAction(cmd *cobra.Command, args []string) {
 		// fixed: change "mysql" -> dbms
 		targetDb, err := compare.OpenDBWithRetry(dbms, dsn)
 		if err != nil {
-			log.Fatalf("connect dsn1 %s error %v\n", dsn, err)
+			log.Fatalf("connect dsn1 %s error %v\n", compare.RedactDSN(dsn), err)
 		}
 		targetDbs = append(targetDbs, targetDb)
 	}
@@ -49,5 +49,9 @@ func gendataAction(cmd *cobra.Command, args []string) {
 		log.Fatalln(errSql)
 	}
 
-	log.Printf("generate data in:\n %v ok\n", gendataDsns)
+	safeDSNs := make([]string, 0, len(gendataDsns))
+	for _, dsn := range gendataDsns {
+		safeDSNs = append(safeDSNs, compare.RedactDSN(dsn))
+	}
+	log.Printf("generate data in:\n %v ok\n", safeDSNs)
 }
