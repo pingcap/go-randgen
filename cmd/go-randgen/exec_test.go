@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pingcap/go-randgen/compare"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExecErr(t *testing.T) {
@@ -62,13 +66,13 @@ select * from test
 
 [err]
 
-[[xxx:password@protocol(address)/dbname]]
+[[xxx:******@protocol(address)/dbname]]
 
-[[yyy:password@protocol(address)/dbname]]
+[[yyy:******@protocol(address)/dbname]]
 
 [compare]
 
-[[xxx:password@protocol(address)/dbname]]
+[[xxx:******@protocol(address)/dbname]]
 
 +-------------+
 | aaa  | bbbb |
@@ -77,7 +81,7 @@ select * from test
 | mmmm | popo |
 +-------------+
 
-[[yyy:password@protocol(address)/dbname]]
+[[yyy:******@protocol(address)/dbname]]
 
 +-------------+
 | aaa  | bbbb |
@@ -86,5 +90,41 @@ select * from test
 | mmmm | popo |
 +-------------+`
 
-	assert.Equal(t, expected, info.String())
+	actual := info.String()
+	assert.Equal(t, expected, actual)
+	assert.NotContains(t, actual, "password")
+}
+
+func TestDumpVisitorCreatesOwnerOnlyLog(t *testing.T) {
+	oldDumpDir := dumpDir
+	defer func() { dumpDir = oldDumpDir }()
+
+	tempDir, err := ioutil.TempDir("", "go-randgen-dump-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	dumpDir = filepath.Join(tempDir, "dump")
+	require.NoError(t, createDumpDir(dumpDir))
+
+	result1 := &compare.QueryDsnRes{Res: mockRes1}
+	result2 := &compare.QueryDsnRes{Res: mockRes1}
+	err = dumpVisitor(
+		"root:secret@tcp(localhost:4000)/one",
+		"root:secret@tcp(localhost:4000)/two",
+	)("select 1", result1, result2)
+	require.NoError(t, err)
+
+	logPath := filepath.Join(dumpDir, "0.log")
+	data, err := ioutil.ReadFile(logPath)
+	require.NoError(t, err)
+	assert.NotContains(t, string(data), "secret")
+	assert.Contains(t, string(data), "******")
+
+	dirInfo, err := os.Stat(dumpDir)
+	require.NoError(t, err)
+	assert.Zero(t, dirInfo.Mode().Perm()&0077)
+
+	fileInfo, err := os.Stat(logPath)
+	require.NoError(t, err)
+	assert.Zero(t, fileInfo.Mode().Perm()&0077)
 }

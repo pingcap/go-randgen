@@ -1,15 +1,102 @@
 package compare
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
+	"log"
+	"os"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+type redactionTestDriver struct {
+	mu    sync.Mutex
+	opens int
+	dsn   string
+}
+
+func (d *redactionTestDriver) Open(dsn string) (driver.Conn, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.opens++
+	d.dsn = dsn
+	return &redactionTestConn{failPing: d.opens == 1}, nil
+}
+
+func (d *redactionTestDriver) reset() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.opens = 0
+	d.dsn = ""
+}
+
+func (d *redactionTestDriver) lastDSN() string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.dsn
+}
+
+var (
+	testDSNDriver     = &redactionTestDriver{}
+	registerDSNDriver sync.Once
+)
+
+type redactionTestConn struct {
+	failPing bool
+}
+
+func (c *redactionTestConn) Prepare(query string) (driver.Stmt, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (c *redactionTestConn) Close() error {
+	return nil
+}
+
+func (c *redactionTestConn) Begin() (driver.Tx, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (c *redactionTestConn) Ping(ctx context.Context) error {
+	if c.failPing {
+		return errors.New("retry ping")
+	}
+	return nil
+}
+
+func TestOpenDBWithRetryKeepsRawDSNOutOfLogs(t *testing.T) {
+	registerDSNDriver.Do(func() {
+		sql.Register("dsn-redaction-test", testDSNDriver)
+	})
+	testDSNDriver.reset()
+
+	var logs bytes.Buffer
+	log.SetOutput(&logs)
+	log.SetFlags(0)
+	defer func() {
+		log.SetOutput(os.Stderr)
+		log.SetFlags(log.LstdFlags)
+	}()
+
+	rawDSN := "root:secret@tcp(db.example.com:4000)/test"
+	db, err := OpenDBWithRetry("dsn-redaction-test", rawDSN)
+	assert.NoError(t, err)
+	if db != nil {
+		defer db.Close()
+	}
+
+	assert.Equal(t, rawDSN, testDSNDriver.lastDSN())
+	assert.NotContains(t, logs.String(), "secret")
+	assert.Contains(t, logs.String(), "root:******@tcp(db.example.com:4000)/test")
+}
 
 func TestSqlResult_BytesEqualTo(t *testing.T) {
 	var mockRes1 = &SqlResult{

@@ -65,8 +65,8 @@ type dumpInfo struct {
 
 func (dump *dumpInfo) String() string {
 	bs := &bytes.Buffer{}
-	dsn1Tag := fmt.Sprintf("[[%s]]\n\n", dump.dsn1)
-	dsn2Tag := fmt.Sprintf("[[%s]]\n\n", dump.dsn2)
+	dsn1Tag := fmt.Sprintf("[[%s]]\n\n", compare.RedactDSN(dump.dsn1))
+	dsn2Tag := fmt.Sprintf("[[%s]]\n\n", compare.RedactDSN(dump.dsn2))
 
 	// [sql]
 	bs.WriteString("[sql]\n\n")
@@ -110,7 +110,7 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 		}
 
 		err := ioutil.WriteFile(filepath.Join(dumpDir,
-			fmt.Sprintf("%d.log", count)), []byte(info.String()), os.ModePerm)
+			fmt.Sprintf("%d.log", count)), []byte(info.String()), 0600)
 		if err != nil {
 			return err
 		}
@@ -133,12 +133,12 @@ func execAction(cmd *cobra.Command, args []string) {
 
 	db1, err := compare.OpenDBWithRetry(dbms, dsn1)
 	if err != nil {
-		log.Fatalf("connect dsn1 %s error %v\n", dsn1, err)
+		log.Fatalf("connect dsn1 %s error %v\n", compare.RedactDSN(dsn1), err)
 	}
 
 	db2, err := compare.OpenDBWithRetry(dbms, dsn2)
 	if err != nil {
-		log.Fatalf("connect dsn2 %s error %v\n", dsn2, err)
+		log.Fatalf("connect dsn2 %s error %v\n", compare.RedactDSN(dsn2), err)
 	}
 
 	log.Println("Open DB ok, starting generate data in two db by ddls")
@@ -165,7 +165,7 @@ func execAction(cmd *cobra.Command, args []string) {
 		log.Println("skip generate data")
 	}
 
-	err = os.MkdirAll(dumpDir, os.ModePerm)
+	err = createDumpDir(dumpDir)
 	if err != nil {
 		log.Fatalf("Fatal Error: dump dir %s create fail %v\n", dumpDir, err)
 	}
@@ -200,6 +200,10 @@ func isDirExist(path string) bool {
 		return false
 	}
 	return s.IsDir()
+}
+
+func createDumpDir(path string) error {
+	return os.MkdirAll(path, 0700)
 }
 
 // delete with red and insert with green

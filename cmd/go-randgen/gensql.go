@@ -43,7 +43,7 @@ func gensqlAction(cmd *cobra.Command, args []string) {
 	log.Println("DBMS is:", dbms)
 
 	if err != nil {
-		log.Fatalf("connect to dsn %s fail, %v\n", gensqlDsn, err)
+		log.Fatalf("connect to dsn %s fail, %v\n", compare.RedactDSN(gensqlDsn), err)
 	}
 
 	log.Println("Cache database meta info...")
