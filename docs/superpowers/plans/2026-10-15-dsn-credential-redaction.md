@@ -112,29 +112,29 @@ Expected: both commands PASS.
 **Files:**
 - Modify only the Go files above as required by `gofmt`.
 
-- [ ] **Step 1: Format changed Go files**
+- [x] **Step 1: Format changed Go files**
 
 Run: `gofmt -w compare/dsn.go compare/dsn_test.go compare/sql.go cmd/go-randgen/exec.go cmd/go-randgen/exec_test.go cmd/go-randgen/gensql.go cmd/go-randgen/gendata.go`
 
-- [ ] **Step 2: Audit raw DSN output sites**
+- [x] **Step 2: Audit raw DSN output sites**
 
 Run: `rg -n 'Printf|Fatalf|Sprintf|WriteFile' compare/sql.go cmd/go-randgen/exec.go cmd/go-randgen/gensql.go cmd/go-randgen/gendata.go`
 
 Expected: no output formatter receives `dsn`, `dsn1`, `dsn2`, `gensqlDsn`, `gendataDsns`, or `dataSourceName` without passing through `RedactDSN` first.
 
-- [ ] **Step 3: Run complete tests**
+- [x] **Step 3: Run complete tests**
 
 Run: `go test ./... -count=1`
 
 Expected: PASS with zero failing packages.
 
-- [ ] **Step 4: Run race-enabled tests and build**
+- [x] **Step 4: Run race-enabled tests and build**
 
 Run `go test -race ./... -count=1`, then run `go build ./cmd/go-randgen`.
 
 Expected: both commands exit 0.
 
-- [ ] **Step 5: Review final diff**
+- [x] **Step 5: Review final diff**
 
 Run: `git diff --check`, `git diff --stat`, and `git status --short`.
 
