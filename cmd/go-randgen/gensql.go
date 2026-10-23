@@ -11,14 +11,23 @@ import (
 )
 
 var gensqlDsn string
+var gensqlDsnFile string
 
 func newGensqlCmd() *cobra.Command {
 	gensqlCmd := &cobra.Command{
 		Use:   "gensql",
 		Short: "random generate sqls by yy, parse yy keyword by user specified db, other then zz file",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if gensqlDsn == "" {
-				return errors.New("a dsn is required")
+			var err error
+			gensqlDsn, err = resolveCredential(credentialInput{
+				flagValue: gensqlDsn,
+				flagSet:   cmd.Flags().Changed("dsn"),
+				filePath:  gensqlDsnFile,
+				envName:   "GO_RANDGEN_DSN",
+				label:     "dsn",
+			})
+			if err != nil {
+				return err
 			}
 
 			if queries < 0 {
@@ -33,7 +42,9 @@ func newGensqlCmd() *cobra.Command {
 		Run: gensqlAction,
 	}
 
-	gensqlCmd.Flags().StringVar(&gensqlDsn, "dsn", "", "user specified db")
+	gensqlCmd.Flags().StringVar(&gensqlDsn, "dsn", "", "database DSN (deprecated: use --dsn-file or GO_RANDGEN_DSN)")
+	gensqlCmd.Flags().StringVar(&gensqlDsnFile, "dsn-file", "", "path to an owner-only file containing the database DSN")
+	_ = gensqlCmd.Flags().MarkDeprecated("dsn", "use --dsn-file or GO_RANDGEN_DSN")
 
 	return gensqlCmd
 }
@@ -43,7 +54,7 @@ func gensqlAction(cmd *cobra.Command, args []string) {
 	log.Println("DBMS is:", dbms)
 
 	if err != nil {
-		log.Fatalf("connect to dsn %s fail, %v\n", gensqlDsn, err)
+		log.Fatalf("connect to dsn %s fail, %v\n", compare.RedactDSN(gensqlDsn), err)
 	}
 
 	log.Println("Cache database meta info...")
