@@ -75,9 +75,9 @@ generate table structrue and data in user specified dsns
 according to user specified or built-in zz file.
 
 ```bash
-# generate table structure and data specified by zz in specified dsn
-# dsns are split by comma
-./go-randgen gendata --dsns "root:@tcp(127.0.0.1:3306)/randgen,root:@tcp(127.0.0.1:4000)/randgen"
+# Put one DSN per line in the file and restrict it to the current user.
+chmod 0600 /run/secrets/randgen-dsns
+./go-randgen gendata --dsns-file /run/secrets/randgen-dsns
 ```
 
 ### gensql
@@ -85,8 +85,8 @@ according to user specified or built-in zz file.
 parse yy to generate sqls by user specified dsn:
 
 ```bash
-./go-randgen gensql -Y examples/functions.yy \  
-             --dsn "root:@tcp(127.0.0.1:3306)/randgen" \ 
+./go-randgen gensql -Y examples/functions.yy \
+             --dsn-file /run/secrets/randgen-dsn \
              -Q 100
 ```
 
@@ -104,8 +104,8 @@ Example:
 
 ```bash
 ./go-randgen exec -Y examples/functions.yy \
-             --dsn1 "root:@tcp(127.0.0.1:4000)/randgen" \
-             --dsn2 "root:@tcp(127.0.0.1:3306)/randgen" \  
+             --dsn1-file /run/secrets/randgen-dsn1 \
+             --dsn2-file /run/secrets/randgen-dsn2 \
              -Q 100
 ```
 
@@ -116,6 +116,26 @@ In above command, go randgen will generate data in two dsns
  (you can change this directory by `--dump`)
  
 Note that go randgen compare sql result without order in default.
+
+### Database credential sources
+
+Secret files are recommended for production. They must be regular files with
+Unix permissions `0400` or `0600`. Environment variables are also supported:
+
+- `GO_RANDGEN_DSN` for `gensql`
+- `GO_RANDGEN_DSNS` for `gendata` (comma-separated DSNs)
+- `GO_RANDGEN_DSN1` and `GO_RANDGEN_DSN2` for `exec`
+
+Configure exactly one source for each DSN. The legacy `--dsn`, `--dsns`,
+`--dsn1`, and `--dsn2` flags remain temporarily for compatibility, but are
+deprecated because command-line credentials may be exposed through shell
+history and process listings.
+
+To rotate credentials, create a new database credential, update the secret
+file or environment variable, restart the go-randgen process, verify the new
+credential works, and then revoke the old credential at the database. Never
+commit secret files or real credentials to the repository.
+
 For example, go-randgen think that the following result is consistent:
 
 ```

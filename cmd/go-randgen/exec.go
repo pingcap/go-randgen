@@ -20,6 +20,8 @@ import (
 
 var dsn1 string
 var dsn2 string
+var dsn1File string
+var dsn2File string
 var order bool
 var dumpDir string
 
@@ -30,6 +32,33 @@ func newExecCmd() *cobra.Command {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if yyPath == "" {
 				return errors.New("yy are required")
+			}
+			var err error
+			dsn1, err = resolveCredential(credentialInput{
+				flagValue: dsn1,
+				flagSet:   cmd.Flags().Changed("dsn1"),
+				filePath:  dsn1File,
+				envName:   "GO_RANDGEN_DSN1",
+				label:     "dsn1",
+			})
+			if err != nil {
+				if err.Error() == "a dsn1 is required" {
+					return errors.New("dsn must have a pair")
+				}
+				return err
+			}
+			dsn2, err = resolveCredential(credentialInput{
+				flagValue: dsn2,
+				flagSet:   cmd.Flags().Changed("dsn2"),
+				filePath:  dsn2File,
+				envName:   "GO_RANDGEN_DSN2",
+				label:     "dsn2",
+			})
+			if err != nil {
+				if err.Error() == "a dsn2 is required" {
+					return errors.New("dsn must have a pair")
+				}
+				return err
 			}
 			if dsn1 == "" || dsn2 == "" {
 				return errors.New("dsn must have a pair")
@@ -44,8 +73,12 @@ func newExecCmd() *cobra.Command {
 		Run: execAction,
 	}
 
-	execCmd.Flags().StringVar(&dsn1, "dsn1", "", "one of compare mysql dsn")
-	execCmd.Flags().StringVar(&dsn2, "dsn2", "", "another compare mysql dsn")
+	execCmd.Flags().StringVar(&dsn1, "dsn1", "", "first database DSN (deprecated: use --dsn1-file or GO_RANDGEN_DSN1)")
+	execCmd.Flags().StringVar(&dsn2, "dsn2", "", "second database DSN (deprecated: use --dsn2-file or GO_RANDGEN_DSN2)")
+	execCmd.Flags().StringVar(&dsn1File, "dsn1-file", "", "path to an owner-only file containing the first database DSN")
+	execCmd.Flags().StringVar(&dsn2File, "dsn2-file", "", "path to an owner-only file containing the second database DSN")
+	_ = execCmd.Flags().MarkDeprecated("dsn1", "use --dsn1-file or GO_RANDGEN_DSN1")
+	_ = execCmd.Flags().MarkDeprecated("dsn2", "use --dsn2-file or GO_RANDGEN_DSN2")
 	execCmd.Flags().BoolVar(&order, "order",
 		false, "compare sql result with order")
 	execCmd.Flags().StringVar(&dumpDir, "dump",
@@ -65,8 +98,8 @@ type dumpInfo struct {
 
 func (dump *dumpInfo) String() string {
 	bs := &bytes.Buffer{}
-	dsn1Tag := fmt.Sprintf("[[%s]]\n\n", dump.dsn1)
-	dsn2Tag := fmt.Sprintf("[[%s]]\n\n", dump.dsn2)
+	dsn1Tag := fmt.Sprintf("[[%s]]\n\n", compare.RedactDSN(dump.dsn1))
+	dsn2Tag := fmt.Sprintf("[[%s]]\n\n", compare.RedactDSN(dump.dsn2))
 
 	// [sql]
 	bs.WriteString("[sql]\n\n")
@@ -110,7 +143,7 @@ func dumpVisitor(dsn1, dsn2 string) compare.Visitor {
 		}
 
 		err := ioutil.WriteFile(filepath.Join(dumpDir,
-			fmt.Sprintf("%d.log", count)), []byte(info.String()), os.ModePerm)
+			fmt.Sprintf("%d.log", count)), []byte(info.String()), 0600)
 		if err != nil {
 			return err
 		}
@@ -133,12 +166,12 @@ func execAction(cmd *cobra.Command, args []string) {
 
 	db1, err := compare.OpenDBWithRetry(dbms, dsn1)
 	if err != nil {
-		log.Fatalf("connect dsn1 %s error %v\n", dsn1, err)
+		log.Fatalf("connect dsn1 %s error %v\n", compare.RedactDSN(dsn1), err)
 	}
 
 	db2, err := compare.OpenDBWithRetry(dbms, dsn2)
 	if err != nil {
-		log.Fatalf("connect dsn2 %s error %v\n", dsn2, err)
+		log.Fatalf("connect dsn2 %s error %v\n", compare.RedactDSN(dsn2), err)
 	}
 
 	log.Println("Open DB ok, starting generate data in two db by ddls")
@@ -165,7 +198,7 @@ func execAction(cmd *cobra.Command, args []string) {
 		log.Println("skip generate data")
 	}
 
-	err = os.MkdirAll(dumpDir, os.ModePerm)
+	err = os.MkdirAll(dumpDir, 0700)
 	if err != nil {
 		log.Fatalf("Fatal Error: dump dir %s create fail %v\n", dumpDir, err)
 	}

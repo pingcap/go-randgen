@@ -22,12 +22,13 @@ var OpenDBWithRetry = func(driverName, dataSourceName string) (mdb *sql.DB, err 
 	startTime := time.Now()
 	sleepTime := time.Millisecond * 500
 	retryCnt := 60
+	safeDSN := RedactDSN(dataSourceName)
 	// The max retry interval is 30 s.
 	for i := 0; i < retryCnt; i++ {
 		mdb, err = sql.Open(driverName, dataSourceName)
 		if err != nil {
 			fmt.Printf("open db `%s` failed, retry count %d err %v\n",
-				dataSourceName, i, err)
+				safeDSN, i, err)
 			time.Sleep(sleepTime)
 			continue
 		}
@@ -36,13 +37,13 @@ var OpenDBWithRetry = func(driverName, dataSourceName string) (mdb *sql.DB, err 
 			break
 		}
 		log.Printf("Error: ping db `%s` failed, retry count %d err %v\n",
-			dataSourceName, i, err)
+			safeDSN, i, err)
 		mdb.Close()
 		time.Sleep(sleepTime)
 	}
 	if err != nil {
 		log.Printf("Error: open db `%s` failed %v, take time %v\n",
-			dataSourceName, err, time.Since(startTime))
+			safeDSN, err, time.Since(startTime))
 		return nil, err
 	}
 
