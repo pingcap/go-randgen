@@ -11,6 +11,7 @@ import (
 
 	"github.com/pingcap/go-randgen/gendata"
 	"github.com/pingcap/go-randgen/grammar/yacc_parser"
+	"github.com/pingcap/go-randgen/internal/luasandbox"
 	"github.com/yuin/gopher-lua"
 )
 
@@ -50,6 +51,8 @@ type SQLIterator interface {
 
 	// you should call it in Visit callback, because it will be deleted after visit the sql
 	PathInfo() *PathInfo
+
+	Close()
 }
 
 type PathInfo struct {
@@ -90,6 +93,9 @@ func (i *SQLRandomlyIterator) PathInfo() *PathInfo {
 
 // visitor sqls generted by the iterator
 func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
+	if i.luaVM == nil {
+		return errors.New("SQL iterator is closed")
+	}
 
 	wrapper := func(sql string) bool {
 		res := visitor(sql)
@@ -116,6 +122,13 @@ func (i *SQLRandomlyIterator) Visit(visitor SqlVisitor) error {
 	return nil
 }
 
+func (i *SQLRandomlyIterator) Close() {
+	if i.luaVM != nil {
+		i.luaVM.Close()
+		i.luaVM = nil
+	}
+}
+
 func getLuaPrintFun(buf *bytes.Buffer) func(*lua.LState) int {
 	return func(state *lua.LState) int {
 		buf.WriteString(state.ToString(1))
@@ -133,11 +146,14 @@ func GenerateSQLRandomly(headCodeBlocks []*yacc_parser.CodeBlock,
 	productionMap map[string]*yacc_parser.Production,
 	keyFunc gendata.Keyfun, productionName string, maxRecursive int,
 	rander *rand.Rand, debug bool) (SQLIterator, error) {
-	l := lua.NewState()
+	l := luasandbox.NewState()
 	registerKeyfun(l, keyFunc)
 	// run head code blocks
 	for _, codeblock := range headCodeBlocks {
-		if err := l.DoString(codeblock.OriginString()[1 : len(codeblock.OriginString())-1]); err != nil {
+		if err := luasandbox.RunString(l,
+			codeblock.OriginString()[1:len(codeblock.OriginString())-1],
+			luasandbox.DefaultExecutionTimeout); err != nil {
+			l.Close()
 			return nil, err
 		}
 	}
@@ -293,9 +309,10 @@ func (i *SQLRandomlyIterator) generateSQLRandomly(productionName string,
 			}
 
 			// lua code block
-			if err := i.luaVM.DoString(item.OriginString()[1 : len(item.OriginString())-1]); err != nil {
-				log.Printf("lua code `%s`, run fail\n %v\n",
-					item.OriginString(), err)
+			if err := luasandbox.RunString(i.luaVM,
+				item.OriginString()[1:len(item.OriginString())-1],
+				luasandbox.DefaultExecutionTimeout); err != nil {
+				log.Printf("lua code block failed: %v\n", err)
 				return !firstWrite, err
 			}
 			if i.printBuf.Len() > 0 {

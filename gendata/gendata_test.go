@@ -32,6 +32,7 @@ data = {
 
 	l, err := runLua(testScript)
 	assert.Equal(t, nil, err)
+	defer l.Close()
 
 	config, err := newZzConfig(l)
 	assert.Equal(t, nil, err)

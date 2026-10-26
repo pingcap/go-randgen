@@ -62,3 +62,10 @@ func TestExtractAllSlice(t *testing.T) {
 	assert.Equal(t, true, ok)
 	assert.Equal(t, []string{"null", "letter", "english", "string(15)"}, strings)
 }
+
+func TestRunLuaRejectsHostAccess(t *testing.T) {
+	_, err := runLua(`stolen = os.getenv("GO_RANDGEN_DSN")`)
+
+	assert.Error(t, err)
+	assert.NotContains(t, err.Error(), "GO_RANDGEN_DSN=")
+}

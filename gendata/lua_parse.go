@@ -3,14 +3,15 @@ package gendata
 import (
 	"fmt"
 
+	"github.com/pingcap/go-randgen/internal/luasandbox"
 	"github.com/yuin/gopher-lua"
 )
 
 func runLua(script string) (*lua.LState, error) {
-	l := lua.NewState()
-	defer l.Close()
-	err := l.DoString(script)
+	l := luasandbox.NewState()
+	err := luasandbox.RunString(l, script, luasandbox.DefaultExecutionTimeout)
 	if err != nil {
+		l.Close()
 		return nil, err
 	}
 

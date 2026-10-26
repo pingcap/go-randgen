@@ -209,6 +209,36 @@ select:
 		err.Error())
 }
 
+func TestLuaSandboxRejectsHostAccess(t *testing.T) {
+	t.Run("head code cannot access environment", func(t *testing.T) {
+		_, err := NewIter(`
+{ stolen = os.getenv("GO_RANDGEN_DSN") }
+query: SELECT
+`, "query", 5, nil, false)
+
+		assert.Error(t, err)
+	})
+
+	t.Run("inline code cannot access files", func(t *testing.T) {
+		iterator, err := NewIter(`
+query: { local file = io.open("/run/secrets/randgen-dsn") } SELECT
+`, "query", 5, nil, false)
+		assert.NoError(t, err)
+
+		err = iterator.Visit(func(sql string) bool { return false })
+		assert.Error(t, err)
+	})
+}
+
+func TestIteratorClose(t *testing.T) {
+	iterator, err := NewIter("query: SELECT", "query", 5, nil, false)
+	assert.NoError(t, err)
+
+	iterator.Close()
+	iterator.Close()
+	assert.Error(t, iterator.Visit(func(string) bool { return false }))
+}
+
 var halfRecur = `
 query:
    select_char

@@ -114,6 +114,7 @@ func getRandSqls(keyf gendata.Keyfun) []string {
 	randomSqls := make([]string, 0, queries)
 
 	sqlIter := getIter(keyf)
+	defer sqlIter.Close()
 
 	err := sqlIter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		randomSqls = append(randomSqls, sql)

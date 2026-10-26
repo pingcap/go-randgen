@@ -213,6 +213,7 @@ func execAction(cmd *cobra.Command, args []string) {
 	}
 
 	sqlIter := getIter(keyf)
+	defer sqlIter.Close()
 	err = sqlIter.Visit(sql_generator.FixedTimesVisitor(func(_ int, sql string) {
 		consistent, dsn1Res, dsn2Res := compare.BySql(sql, db1, db2, !order)
 		if !consistent {
