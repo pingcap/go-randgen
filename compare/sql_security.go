@@ -210,7 +210,7 @@ func sqlSecurityTokens(statement string) []string {
 
 func skipSQLQuoted(statement string, offset int, quote byte) int {
 	for offset++; offset < len(statement); offset++ {
-		if statement[offset] == '\\' {
+		if quote != '\'' && statement[offset] == '\\' {
 			offset++
 			continue
 		}

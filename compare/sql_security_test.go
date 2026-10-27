@@ -80,6 +80,8 @@ func TestValidateSQLSafetyBlocksPrivilegedOperations(t *testing.T) {
 		"PREPARE stmt FROM 'DROP DATABASE production'",
 		"EXECUTE stmt",
 		"CALL privileged_procedure()",
+		`SELECT 'safe\'; DROP DATABASE production`,
+		`SELECT 'safe\'; SELECT pg_read_file('/run/secrets/value')`,
 	} {
 		err := validateSQLSafety(statement)
 		if assert.Error(t, err, statement) {
