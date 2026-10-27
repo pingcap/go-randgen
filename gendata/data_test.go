@@ -18,6 +18,7 @@ data = {
 `
 	l, err := runLua(zzScript)
 	assert.Equal(t, nil, err)
+	defer l.Close()
 
 	t.Run("test one record gen", func(t *testing.T) {
 		data, err := newData(l)

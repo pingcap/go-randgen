@@ -16,6 +16,7 @@ fields = {
 `
 	l, err := runLua(zzScript)
 	assert.Equal(t, nil, err)
+	defer l.Close()
 
 	fields, err := newFields(l)
 	assert.Equal(t, nil, err)

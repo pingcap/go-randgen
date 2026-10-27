@@ -73,6 +73,7 @@ func ByZz(zz string) ([]string, Keyfun, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	defer l.Close()
 
 	config, err := newZzConfig(l)
 	if err != nil {

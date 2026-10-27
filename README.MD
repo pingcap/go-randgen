@@ -136,6 +136,26 @@ file or environment variable, restart the go-randgen process, verify the new
 credential works, and then revoke the old credential at the database. Never
 commit secret files or real credentials to the repository.
 
+### Grammar security
+
+The Lua code embedded in `.zz` and `.yy` grammar files runs in a restricted
+environment. Only the Lua base, string, table, and math functions needed by
+the bundled grammars are available. Filesystem, process, environment,
+package-loading, debug, channel, coroutine, `dofile`, and `loadfile` access is
+disabled. Each Lua code block also has a one-second execution deadline.
+
+Generated SQL is rejected before reaching a database driver when it attempts
+account or privilege changes, database-level administration, server-side file
+access, plugin installation, stored programs, global settings, or prepared
+statement execution. Normal table-level DDL and DML remain available for fuzz
+testing.
+
+Grammar files can still generate arbitrary table-level SQL, so use only a
+dedicated disposable test database. The database account should be scoped to
+that database and must not have administrative, filesystem, plugin, user
+management, or access to production data. Treat externally supplied grammar
+files as untrusted input even with these safeguards.
+
 For example, go-randgen think that the following result is consistent:
 
 ```

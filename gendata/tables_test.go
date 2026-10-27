@@ -16,6 +16,7 @@ tables = {
 `
 	l, err := runLua(zzScript)
 	assert.Equal(t, nil, err)
+	defer l.Close()
 
 	tables, err := newTables(l)
 	assert.Equal(t, nil, err)

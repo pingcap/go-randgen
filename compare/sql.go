@@ -195,6 +195,9 @@ func (result *SqlResult) String() string {
 }
 
 func query(db *sql.DB, sql string) (*SqlResult, error) {
+	if err := validateSQLSafety(sql); err != nil {
+		return nil, err
+	}
 	rows, err := db.Query(sql)
 	if err != nil {
 		return nil, err
@@ -244,9 +247,12 @@ func query(db *sql.DB, sql string) (*SqlResult, error) {
 }
 
 func exec(db *sql.DB, sql string) (int64, error) {
+	if err := validateSQLSafety(sql); err != nil {
+		return 0, err
+	}
 	result, err := db.Exec(sql)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 
 	rowsAffected, err := result.RowsAffected()
@@ -279,6 +285,12 @@ type SqlExecErr struct {
 }
 
 func ExecSqlsInDbs(sqls []string, dbs ...*sql.DB) (string, error) {
+	for _, sqlStr := range sqls {
+		if err := validateSQLSafety(sqlStr); err != nil {
+			return sqlStr, err
+		}
+	}
+
 	wg := &sync.WaitGroup{}
 	wg.Add(len(dbs))
 
