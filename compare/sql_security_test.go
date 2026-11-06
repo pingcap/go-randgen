@@ -1,6 +1,7 @@
 package compare
 
 import (
+	"database/sql"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -8,9 +9,108 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValidateSQLSafetyQuoteEscapes(t *testing.T) {
+	for _, statement := range []string{
+		`SELECT 'safe\'; ATTACH DATABASE ':memory:' AS injected; -- '`,
+		`SELECT 'safe\'; COPY t TO PROGRAM 'command'; -- '`,
+		`SELECT 'safe\'; GRANT ALL ON t TO attacker; -- '`,
+		`SELECT 'safe\'; CREATE ROLE attacker; -- '`,
+		`SELECT 'safe\'; CREATE SCHEMA injected; -- '`,
+		`SELECT 'safe\'; DROP DATABASE production; -- '`,
+		`SELECT 'safe\'; SELECT pg_read_file('secret'); -- '`,
+		`SELECT 'safe\'; SELECT load_extension('extension'); -- '`,
+		`SELECT 'safe\'; SELECT secret INTO OUTFILE 'leak' FROM t; -- '`,
+		// SQLite permits a column named e followed by a single-quoted alias.
+		`SELECT e'safe\' FROM t; ATTACH DATABASE ':memory:' AS injected; -- '`,
+		// With backslash escapes, the second quote starts the hidden SQL tail.
+		`SELECT 'safe\' AS value, '; GRANT ALL ON t TO attacker; -- '`,
+		`SELECT E'safe\' AS value, '; SELECT pg_read_file('secret'); -- '`,
+		// PostgreSQL can mix ordinary strings and E-strings in one statement.
+		`SELECT 'prefix\', E'safe\' AS value, '; SELECT pg_read_file('secret'); -- '`,
+	} {
+		t.Run(statement, func(t *testing.T) {
+			err := validateSQLSafety(statement)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "safety policy")
+		})
+	}
+}
+
+func TestSkipSQLQuoted(t *testing.T) {
+	for _, quote := range []byte{'\'', '"', '`'} {
+		q := string(quote)
+		for _, tc := range []struct {
+			statement        string
+			backslashEscapes bool
+			end              int
+		}{
+			{q + "a\\" + q + "b" + q + " tail", false, 4},
+			{q + "a\\" + q + "b" + q + " tail", true, 6},
+			{q + "a" + q + q + "b" + q + " tail", false, 6},
+			{q + "a" + q + q + "b" + q + " tail", true, 6},
+			{q + "a\\\\" + q + " tail", false, 5},
+			{q + "a\\\\" + q + " tail", true, 5},
+			{q + "unfinished", false, 11},
+			{q + "unfinished", true, 11},
+		} {
+			assert.Equal(t, tc.end, skipSQLQuoted(tc.statement, 0, quote, tc.backslashEscapes),
+				"statement=%q backslashEscapes=%t", tc.statement, tc.backslashEscapes)
+		}
+	}
+}
+
+func TestDatabaseExecutionRejectsQuoteBypass(t *testing.T) {
+	for _, statement := range []string{
+		`SELECT 'safe\'; ATTACH DATABASE ':memory:' AS injected; -- '`,
+		`SELECT e'safe\' FROM t; ATTACH DATABASE ':memory:' AS injected; -- '`,
+	} {
+		// SQLite really executes the tail when the statement reaches its driver.
+		direct, err := sql.Open("sqlite3", ":memory:")
+		require.NoError(t, err)
+		defer direct.Close()
+		_, err = direct.Exec("CREATE TABLE t(e INTEGER)")
+		require.NoError(t, err)
+		direct.SetMaxOpenConns(1)
+		_, err = direct.Exec(statement)
+		require.NoError(t, err)
+		var value string
+		require.NoError(t, direct.QueryRow("SELECT name FROM pragma_database_list WHERE name = 'injected'").Scan(&value))
+		assert.Equal(t, "injected", value)
+
+		for _, entry := range []string{"query", "exec", "ExecSqlsInDbs"} {
+			t.Run(entry, func(t *testing.T) {
+				db, err := sql.Open("sqlite3", ":memory:")
+				require.NoError(t, err)
+				defer db.Close()
+				_, err = db.Exec("CREATE TABLE t(e INTEGER)")
+				require.NoError(t, err)
+				db.SetMaxOpenConns(1)
+				switch entry {
+				case "query":
+					_, err = query(db, statement)
+				case "exec":
+					_, err = exec(db, statement)
+				case "ExecSqlsInDbs":
+					_, err = ExecSqlsInDbs([]string{statement}, db)
+				}
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "safety policy")
+				var count int
+				require.NoError(t, db.QueryRow("SELECT count(*) FROM pragma_database_list WHERE name = 'injected'").Scan(&count))
+				assert.Zero(t, count)
+			})
+		}
+	}
+}
+
 func TestValidateSQLSafetyAllowsTableWorkloads(t *testing.T) {
 	for _, statement := range []string{
 		"SELECT 'INTO OUTFILE is text'",
+		`SELECT 'it''s ordinary text'`,
+		`SELECT 'it\'s ordinary text'`,
+		`SELECT E'it\'s ordinary text'`,
+		`SELECT 'C:\temporary\data'`,
+		`SELECT 'ends in two backslashes\\'`,
 		"CREATE TABLE test.t (id BIGINT)",
 		"CREATE TEMPORARY TABLE test.t (id BIGINT)",
 		"CREATE UNIQUE INDEX idx_t_id ON test.t (id)",
