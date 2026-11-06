@@ -84,25 +84,36 @@ var blockedSQLFunctions = map[string]bool{
 	"SYS_EXEC":            true,
 }
 
+type sqlQuoteMode int
+
+const (
+	sqlQuoteStandard sqlQuoteMode = iota
+	sqlQuoteBackslash
+	sqlQuotePostgres
+)
+
 func validateSQLSafety(statement string) error {
-	tokens := sqlSecurityTokens(statement)
-	for i, token := range tokens {
-		if token == "CREATE" && (i == 0 || tokens[i-1] == ";") && !allowedCreateStatement(tokens[i:]) {
-			return fmt.Errorf("SQL statement blocked by safety policy: CREATE operation")
-		}
-		if blockedSQLKeywords[token] || blockedSQLFunctions[token] {
-			return fmt.Errorf("SQL statement blocked by safety policy: %s operation", token)
-		}
-		if i+1 < len(tokens) {
-			pair := token + " " + tokens[i+1]
-			if blockedSQLPairs[pair] {
-				return fmt.Errorf("SQL statement blocked by safety policy: %s operation", pair)
+	// Drivers and SQL modes disagree on quote escapes; every reading must be safe.
+	for _, mode := range []sqlQuoteMode{sqlQuoteStandard, sqlQuoteBackslash, sqlQuotePostgres} {
+		tokens := sqlSecurityTokens(statement, mode)
+		for i, token := range tokens {
+			if token == "CREATE" && (i == 0 || tokens[i-1] == ";") && !allowedCreateStatement(tokens[i:]) {
+				return fmt.Errorf("SQL statement blocked by safety policy: CREATE operation")
 			}
-		}
-		if i+2 < len(tokens) {
-			triple := token + " " + tokens[i+1] + " " + tokens[i+2]
-			if blockedSQLTriples[triple] {
-				return fmt.Errorf("SQL statement blocked by safety policy: %s operation", triple)
+			if blockedSQLKeywords[token] || blockedSQLFunctions[token] {
+				return fmt.Errorf("SQL statement blocked by safety policy: %s operation", token)
+			}
+			if i+1 < len(tokens) {
+				pair := token + " " + tokens[i+1]
+				if blockedSQLPairs[pair] {
+					return fmt.Errorf("SQL statement blocked by safety policy: %s operation", pair)
+				}
+			}
+			if i+2 < len(tokens) {
+				triple := token + " " + tokens[i+1] + " " + tokens[i+2]
+				if blockedSQLTriples[triple] {
+					return fmt.Errorf("SQL statement blocked by safety policy: %s operation", triple)
+				}
 			}
 		}
 	}
@@ -138,22 +149,25 @@ func allowedCreateStatement(tokens []string) bool {
 // sqlSecurityTokens returns unquoted SQL words. Ordinary comments and quoted
 // values are ignored; MySQL executable comments are scanned because the server
 // executes their contents.
-func sqlSecurityTokens(statement string) []string {
+func sqlSecurityTokens(statement string, mode sqlQuoteMode) []string {
 	var tokens []string
 	for offset := 0; offset < len(statement); {
 		if (statement[offset] == 'U' || statement[offset] == 'u') && offset+2 < len(statement) &&
 			statement[offset+1] == '&' && statement[offset+2] == '"' {
 			tokens = append(tokens, "UNICODE_QUOTED_IDENTIFIER")
-			offset = skipSQLQuoted(statement, offset+2, '"')
+			offset = skipSQLQuoted(statement, offset+2, '"', mode == sqlQuoteBackslash)
 			continue
 		}
 		switch statement[offset] {
 		case '\'':
-			offset = skipSQLQuoted(statement, offset, statement[offset])
+			// PostgreSQL E-strings always use backslash escapes, even beside ordinary strings.
+			escapeString := mode == sqlQuotePostgres && offset > 0 && (statement[offset-1] == 'E' || statement[offset-1] == 'e') &&
+				(offset == 1 || !isSQLWordByte(statement[offset-2]))
+			offset = skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash || escapeString)
 		case '"', '`':
-			end := skipSQLQuoted(statement, offset, statement[offset])
+			end := skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash)
 			if end > offset+1 {
-				tokens = append(tokens, sqlSecurityTokens(statement[offset+1:end-1])...)
+				tokens = append(tokens, sqlSecurityTokens(statement[offset+1:end-1], mode)...)
 			}
 			offset = end
 		case ';':
@@ -187,7 +201,7 @@ func sqlSecurityTokens(statement string) []string {
 					for contentStart < contentEnd && statement[contentStart] >= '0' && statement[contentStart] <= '9' {
 						contentStart++
 					}
-					tokens = append(tokens, sqlSecurityTokens(statement[contentStart:contentEnd])...)
+					tokens = append(tokens, sqlSecurityTokens(statement[contentStart:contentEnd], mode)...)
 				}
 				offset = contentEnd + 2
 			} else {
@@ -208,9 +222,9 @@ func sqlSecurityTokens(statement string) []string {
 	return tokens
 }
 
-func skipSQLQuoted(statement string, offset int, quote byte) int {
+func skipSQLQuoted(statement string, offset int, quote byte, backslashEscapes bool) int {
 	for offset++; offset < len(statement); offset++ {
-		if statement[offset] == '\\' {
+		if backslashEscapes && statement[offset] == '\\' {
 			offset++
 			continue
 		}
