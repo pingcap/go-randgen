@@ -1,10 +1,13 @@
 package gendata
 
 import (
+	"database/sql"
+	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGenDdls(t *testing.T) {
@@ -62,6 +65,93 @@ data = {
 
 }
 
+func TestByDbQuotesCatalogIdentifiers(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	assert.NoError(t, err)
+	defer db.Close()
+
+	tableName := "safe`; DROP DATABASE production; --"
+	fieldName := "value`; GRANT ALL ON *.* TO attacker; --"
+	mock.ExpectQuery("show tables").WillReturnRows(
+		sqlmock.NewRows([]string{"Tables_in_test"}).AddRow(tableName))
+	mock.ExpectQuery(regexp.QuoteMeta("desc `safe``; DROP DATABASE production; --`")).
+		WillReturnRows(sqlmock.NewRows([]string{"Field", "Type", "Null", "Key", "Default", "Extra"}).
+			AddRow(fieldName, "int(11)", "YES", "", nil, ""))
+
+	kf, err := ByDb(db, "mysql")
+	require.NoError(t, err)
+	assertMustEqual(t, "`safe``; DROP DATABASE production; --`", kf["_table"])
+	assertMustEqual(t, "`value``; GRANT ALL ON *.* TO attacker; --`", kf["_field"])
+	assertMustEqual(t, "`value``; GRANT ALL ON *.* TO attacker; --`", kf["_field_list"])
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestByDbBindsCatalogLookup(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		dbms      string
+		tablesSQL string
+		fieldsSQL string
+		fieldRows *sqlmock.Rows
+		tableName string
+		wantTable string
+	}{
+		{
+			name:      "postgres",
+			dbms:      "postgres",
+			tablesSQL: "SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname='public';",
+			fieldsSQL: "SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1;",
+			fieldRows: sqlmock.NewRows([]string{"table_name", "column_name", "data_type"}).AddRow("odd\"name", "id", "integer"),
+			tableName: "odd\"name",
+			wantTable: `"odd""name"`,
+		},
+		{
+			name:      "sqlite",
+			dbms:      "sqlite3",
+			tablesSQL: "SELECT name FROM sqlite_master WHERE type='table';",
+			fieldsSQL: "SELECT name, type FROM pragma_table_info(?)",
+			fieldRows: sqlmock.NewRows([]string{"name", "type"}).AddRow("id", "integer"),
+			tableName: "odd\"name",
+			wantTable: `"odd""name"`,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			assert.NoError(t, err)
+			defer db.Close()
+
+			mock.ExpectQuery(regexp.QuoteMeta(test.tablesSQL)).WillReturnRows(
+				sqlmock.NewRows([]string{"name"}).AddRow(test.tableName))
+			mock.ExpectQuery(regexp.QuoteMeta(test.fieldsSQL)).WithArgs(test.tableName).WillReturnRows(test.fieldRows)
+
+			kf, err := ByDb(db, test.dbms)
+			require.NoError(t, err)
+			assertMustEqual(t, test.wantTable, kf["_table"])
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestByDbSQLiteIntegration(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`CREATE TABLE "odd""table" ("odd""field" INTEGER)`)
+	require.NoError(t, err)
+	kf, err := ByDb(db, "sqlite3")
+	require.NoError(t, err)
+
+	assertMustEqual(t, `"odd""table"`, kf["_table"])
+	assertMustEqual(t, `"odd""field"`, kf["_field"])
+	tableName, err := kf["_table"]()
+	require.NoError(t, err)
+	fieldName, err := kf["_field"]()
+	require.NoError(t, err)
+	_, err = db.Exec("INSERT INTO " + tableName + " (" + fieldName + ") VALUES (1)")
+	require.NoError(t, err)
+}
+
 func TestByDb(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	assert.Equal(t, nil, err)
@@ -70,7 +160,7 @@ func TestByDb(t *testing.T) {
 
 	tableSet := make(map[string]bool)
 	for _, tbl := range tableOrders {
-		tableSet[tbl] = true
+		tableSet["`"+tbl+"`"] = true
 	}
 
 	rows := sqlmock.NewRows([]string{"Tables_in_test"})
@@ -104,11 +194,11 @@ func TestByDb(t *testing.T) {
 		fRows.AddRow(infoName, info.tp, "YES", "", nil, "")
 	}
 
-	mock.ExpectQuery("desc table1").
+	mock.ExpectQuery(regexp.QuoteMeta("desc `table1`")).
 		WillReturnRows(fRows)
 
 	kf, err := ByDb(db, "mysql")
-	assert.Equal(t, nil, err)
+	require.NoError(t, err)
 
 	for i := 0; i < 50; i++ {
 		assert.Condition(t, func() (success bool) {
