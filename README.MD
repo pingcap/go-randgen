@@ -155,6 +155,10 @@ boundaries; unterminated dollar quotes are rejected. Validation checks
 alternative dialect interpretations conservatively, so ambiguous SQL may
 be rejected even if harmless for a particular database.
 
+MySQL/MariaDB executable comments (`/*! ... */` and `/*M! ... */`) are
+rejected because their execution depends on the server flavour and version.
+Use ordinary SQL instead.
+
 Grammar files can still generate arbitrary table-level SQL, so use only a
 dedicated disposable test database. The database account should be scoped to
 that database and must not have administrative, filesystem, plugin, user
