@@ -22,6 +22,7 @@ var blockedSQLKeywords = map[string]bool{
 	"USE":                       true,
 	"VACUUM":                    true,
 	"UNICODE_QUOTED_IDENTIFIER": true,
+	"UNTERMINATED_COMMENT":      true,
 }
 
 var blockedSQLPairs = map[string]bool{
@@ -93,26 +94,28 @@ const (
 )
 
 func validateSQLSafety(statement string) error {
-	// Drivers and SQL modes disagree on quote escapes; every reading must be safe.
+	// Drivers disagree on quotes and line comments; every reading must be safe.
 	for _, mode := range []sqlQuoteMode{sqlQuoteStandard, sqlQuoteBackslash, sqlQuotePostgres} {
-		tokens := sqlSecurityTokens(statement, mode)
-		for i, token := range tokens {
-			if token == "CREATE" && (i == 0 || tokens[i-1] == ";") && !allowedCreateStatement(tokens[i:]) {
-				return fmt.Errorf("SQL statement blocked by safety policy: CREATE operation")
-			}
-			if blockedSQLKeywords[token] || blockedSQLFunctions[token] {
-				return fmt.Errorf("SQL statement blocked by safety policy: %s operation", token)
-			}
-			if i+1 < len(tokens) {
-				pair := token + " " + tokens[i+1]
-				if blockedSQLPairs[pair] {
-					return fmt.Errorf("SQL statement blocked by safety policy: %s operation", pair)
+		for _, mysqlComments := range []bool{false, true} {
+			tokens := sqlSecurityTokens(statement, mode, mysqlComments)
+			for i, token := range tokens {
+				if token == "CREATE" && (i == 0 || tokens[i-1] == ";") && !allowedCreateStatement(tokens[i:]) {
+					return fmt.Errorf("SQL statement blocked by safety policy: CREATE operation")
 				}
-			}
-			if i+2 < len(tokens) {
-				triple := token + " " + tokens[i+1] + " " + tokens[i+2]
-				if blockedSQLTriples[triple] {
-					return fmt.Errorf("SQL statement blocked by safety policy: %s operation", triple)
+				if blockedSQLKeywords[token] || blockedSQLFunctions[token] {
+					return fmt.Errorf("SQL statement blocked by safety policy: %s operation", token)
+				}
+				if i+1 < len(tokens) {
+					pair := token + " " + tokens[i+1]
+					if blockedSQLPairs[pair] {
+						return fmt.Errorf("SQL statement blocked by safety policy: %s operation", pair)
+					}
+				}
+				if i+2 < len(tokens) {
+					triple := token + " " + tokens[i+1] + " " + tokens[i+2]
+					if blockedSQLTriples[triple] {
+						return fmt.Errorf("SQL statement blocked by safety policy: %s operation", triple)
+					}
 				}
 			}
 		}
@@ -149,7 +152,7 @@ func allowedCreateStatement(tokens []string) bool {
 // sqlSecurityTokens returns unquoted SQL words. Ordinary comments and quoted
 // values are ignored; MySQL executable comments are scanned because the server
 // executes their contents.
-func sqlSecurityTokens(statement string, mode sqlQuoteMode) []string {
+func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) []string {
 	var tokens []string
 	for offset := 0; offset < len(statement); {
 		if (statement[offset] == 'U' || statement[offset] == 'u') && offset+2 < len(statement) &&
@@ -167,16 +170,22 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode) []string {
 		case '"', '`':
 			end := skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash)
 			if end > offset+1 {
-				tokens = append(tokens, sqlSecurityTokens(statement[offset+1:end-1], mode)...)
+				tokens = append(tokens, sqlSecurityTokens(statement[offset+1:end-1], mode, mysqlComments)...)
 			}
 			offset = end
 		case ';':
 			tokens = append(tokens, ";")
 			offset++
 		case '#':
-			offset = skipSQLLine(statement, offset+1)
+			if mysqlComments {
+				offset = skipSQLLine(statement, offset+1)
+			} else {
+				offset++
+			}
 		case '-':
-			if offset+1 < len(statement) && statement[offset+1] == '-' {
+			if offset+1 < len(statement) && statement[offset+1] == '-' &&
+				(!mysqlComments || offset+2 < len(statement) &&
+					(statement[offset+2] <= ' ' || statement[offset+2] == 0x7f)) {
 				offset = skipSQLLine(statement, offset+2)
 			} else {
 				offset++
@@ -185,7 +194,7 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode) []string {
 			if offset+1 < len(statement) && statement[offset+1] == '*' {
 				end := strings.Index(statement[offset+2:], "*/")
 				if end < 0 {
-					return tokens
+					return append(tokens, "UNTERMINATED_COMMENT")
 				}
 				contentStart := offset + 2
 				contentEnd := contentStart + end
@@ -201,7 +210,7 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode) []string {
 					for contentStart < contentEnd && statement[contentStart] >= '0' && statement[contentStart] <= '9' {
 						contentStart++
 					}
-					tokens = append(tokens, sqlSecurityTokens(statement[contentStart:contentEnd], mode)...)
+					tokens = append(tokens, sqlSecurityTokens(statement[contentStart:contentEnd], mode, mysqlComments)...)
 				}
 				offset = contentEnd + 2
 			} else {
