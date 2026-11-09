@@ -24,6 +24,7 @@ var blockedSQLKeywords = map[string]bool{
 	"UNICODE_QUOTED_IDENTIFIER": true,
 	"UNTERMINATED_COMMENT":      true,
 	"UNTERMINATED_DOLLAR_QUOTE": true,
+	"EXECUTABLE_COMMENT":        true,
 }
 
 var blockedSQLPairs = map[string]bool{
@@ -152,8 +153,7 @@ func allowedCreateStatement(tokens []string) bool {
 }
 
 // sqlSecurityTokens returns unquoted SQL words. Ordinary comments and quoted
-// values are ignored; MySQL executable comments are scanned because the server
-// executes their contents.
+// values are ignored; version-dependent executable comments are rejected.
 func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) []string {
 	var tokens []string
 	for offset := 0; offset < len(statement); {
@@ -200,19 +200,10 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 				}
 				contentStart := offset + 2
 				contentEnd := contentStart + end
-				if contentStart < contentEnd && statement[contentStart] == '!' {
-					contentStart++
-				} else if contentStart+1 < contentEnd && (statement[contentStart] == 'M' || statement[contentStart] == 'm') && statement[contentStart+1] == '!' {
-					contentStart += 2
-				} else {
-					offset = contentEnd + 2
-					continue
-				}
-				{
-					for contentStart < contentEnd && statement[contentStart] >= '0' && statement[contentStart] <= '9' {
-						contentStart++
-					}
-					tokens = append(tokens, sqlSecurityTokens(statement[contentStart:contentEnd], mode, mysqlComments)...)
+				// Servers may execute or ignore the body depending on flavour and version.
+				if contentStart < contentEnd && (statement[contentStart] == '!' ||
+					contentStart+1 < contentEnd && (statement[contentStart] == 'M' || statement[contentStart] == 'm') && statement[contentStart+1] == '!') {
+					return append(tokens, "EXECUTABLE_COMMENT")
 				}
 				offset = contentEnd + 2
 			} else {
