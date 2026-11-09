@@ -152,13 +152,13 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 
 	if len(tableStmts) > 0 {
 		if dbms == "postgres" {
-			rows, err = db.Query("SELECT table_name, column_name, data_type "+
-				"FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1;",
-				tableStmts[0].name)
+			rows, err = db.Query(fmt.Sprintf("SELECT table_name, column_name, data_type \n"+
+				"FROM information_schema.columns \n"+
+				"WHERE table_name = '%s';", tableStmts[0].name))
 		} else if dbms == "sqlite3" {
-			rows, err = db.Query("SELECT name, type FROM pragma_table_info(?)", tableStmts[0].name)
+			rows, err = db.Query(fmt.Sprintf("PRAGMA table_info('%s');", tableStmts[0].name))
 		} else if dbms == "mysql" {
-			rows, err = db.Query("desc " + quoteIdentifier(tableStmts[0].name, '`'))
+			rows, err = db.Query(fmt.Sprintf("desc %s", tableStmts[0].name))
 		} else {
 			err = &dbDriverError{dbms, "Cannot retrieve the fields"}
 		}
@@ -172,7 +172,9 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 			if dbms == "postgres" {
 				err = rows.Scan(&sql.RawBytes{}, &fieldName, &fieldType)
 			} else if dbms == "sqlite3" {
-				err = rows.Scan(&fieldName, &fieldType)
+				err = rows.Scan(&sql.RawBytes{}, &fieldName,
+					&fieldType, &sql.RawBytes{},
+					&sql.RawBytes{}, &sql.RawBytes{})
 			} else if dbms == "mysql" {
 				err = rows.Scan(&fieldName, &fieldType,
 					&sql.RawBytes{}, &sql.RawBytes{},
@@ -188,18 +190,7 @@ func ByDb(db *sql.DB, dbms string) (Keyfun, error) {
 
 	}
 
-	quote := func(name string) string {
-		if dbms == "mysql" {
-			return quoteIdentifier(name, '`')
-		}
-		return quoteIdentifier(name, '"')
-	}
-	return newKeyfun(tableStmts, fieldExecs, quote, quote), nil
-}
-
-func quoteIdentifier(name string, quote rune) string {
-	q := string(quote)
-	return q + strings.ReplaceAll(name, q, q+q) + q
+	return NewKeyfun(tableStmts, fieldExecs), nil
 }
 
 const insertTemp = "insert into %s values %s"
@@ -241,29 +232,32 @@ var fClass = map[string]int{
 
 type Keyfun map[string]func() (string, error)
 
-func joinFields(fields []*fieldExec, quote func(string) string) string {
+func joinFields(fields []*fieldExec) string {
 	strBuf := bytes.Buffer{}
 
+	// decode the quotation mark
 	for i, f := range fields {
-		if i > 0 {
-			strBuf.WriteRune(',')
+		if i == 0 {
+			strBuf.WriteRune('`')
+		} else {
+			strBuf.WriteString("`,`")
 		}
-		strBuf.WriteString(quote(f.name))
+
+		strBuf.WriteString(f.name)
+
+		if i == len(fields)-1 {
+			strBuf.WriteRune('`')
+		}
 	}
 
 	return strBuf.String()
 }
 
-func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
-	return newKeyfun(tables, fields, func(name string) string { return name },
-		func(name string) string { return quoteIdentifier(name, '`') })
-}
+var field_invariant = ""
 
-func newKeyfun(tables []*tableStmt, fields []*fieldExec,
-	quoteTable, quoteField func(string) string) Keyfun {
+func NewKeyfun(tables []*tableStmt, fields []*fieldExec) Keyfun {
 	fieldsInt := make([]*fieldExec, 0)
 	fieldsChar := make([]*fieldExec, 0)
-	fieldInvariant := ""
 
 	for _, fieldExec := range fields {
 		if class, ok := fClass[fieldExec.dType()]; ok {
@@ -281,13 +275,13 @@ func newKeyfun(tables []*tableStmt, fields []*fieldExec,
 			if len(tables) == 0 {
 				return "", errors.New("there is no table")
 			}
-			return quoteTable(tables[rand.Intn(len(tables))].name), nil
+			return tables[rand.Intn(len(tables))].name, nil
 		},
 		"_field": func() (string, error) {
 			if len(fields) == 0 {
 				return "", errors.New("there is no fields")
 			}
-			return quoteField(fields[rand.Intn(len(fields))].name), nil
+			return "`" + fields[rand.Intn(len(fields))].name + "`", nil
 		},
 
 		"_field_invariant": func() (string, error) {
@@ -295,42 +289,42 @@ func newKeyfun(tables []*tableStmt, fields []*fieldExec,
 				return "", errors.New("there is no fields")
 			}
 			// set the invariant
-			if len(fieldInvariant) == 0 {
-				fieldInvariant = quoteField(fields[rand.Intn(len(fields))].name)
+			if len(field_invariant) == 0 {
+				field_invariant = "`" + fields[rand.Intn(len(fields))].name + "`"
 			}
 			// use the invariant
-			return fieldInvariant, nil
+			return field_invariant, nil
 		},
 
 		"_field_int": func() (string, error) {
 			if len(fieldsInt) == 0 {
 				return "", errors.New("there is no int fields")
 			}
-			return quoteField(fieldsInt[rand.Intn(len(fieldsInt))].name), nil
+			return "`" + fieldsInt[rand.Intn(len(fieldsInt))].name + "`", nil
 		},
 		"_field_int_list": func() (s string, e error) {
 			if len(fieldsInt) == 0 {
 				return "", errors.New("there is no int fields")
 			}
-			return joinFields(fieldsInt, quoteField), nil
+			return joinFields(fieldsInt), nil
 		},
 		"_field_char": func() (string, error) {
 			if len(fieldsChar) == 0 {
 				return "", errors.New("there is no char fields")
 			}
-			return quoteField(fieldsChar[rand.Intn(len(fieldsChar))].name), nil
+			return "`" + fieldsChar[rand.Intn(len(fieldsChar))].name + "`", nil
 		},
 		"_field_char_list": func() (s string, e error) {
 			if len(fieldsChar) == 0 {
 				return "", errors.New("there is no char fields")
 			}
-			return joinFields(fieldsChar, quoteField), nil
+			return joinFields(fieldsChar), nil
 		},
 		"_field_list": func() (s string, e error) {
 			if len(fields) == 0 {
 				return "", errors.New("there is no char fields")
 			}
-			return joinFields(fields, quoteField), nil
+			return joinFields(fields), nil
 		},
 	}
 
