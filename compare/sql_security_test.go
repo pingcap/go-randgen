@@ -189,3 +189,74 @@ func TestValidateSQLSafetyBlocksPrivilegedOperations(t *testing.T) {
 		}
 	}
 }
+
+func TestValidateSQLSafetyCommentRules(t *testing.T) {
+	for _, statement := range []string{
+		`SELECT --LOAD_FILE('placeholder')`,
+		`SELECT 1 # length(pg_read_file('placeholder'))`,
+		`SELECT 1 /* unterminated`,
+		`SELECT 1 /*!50000 DROP DATABASE placeholder`,
+		"SELECT 1 # '\n; GRANT ALL ON t TO placeholder; -- '",
+		"SELECT 1 --'\n; COPY t TO PROGRAM 'placeholder'; -- '",
+		`/*!50000 SELECT --LOAD_FILE('placeholder') */`,
+		`SELECT "#pg_read_file"('placeholder')`,
+	} {
+		t.Run(statement, func(t *testing.T) {
+			err := validateSQLSafety(statement)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "safety policy")
+		})
+	}
+	for _, statement := range []string{
+		"SELECT 1 -- ordinary comment\n; SELECT 2",
+		"SELECT 1 --\tordinary comment\n; SELECT 2",
+		"SELECT 1 # ordinary comment\n; SELECT 2",
+		`SELECT 1 /* DROP DATABASE is comment text */`,
+		`SELECT '--LOAD_FILE is text', '#pg_read_file is text', '/* text'`,
+	} {
+		assert.NoError(t, validateSQLSafety(statement), statement)
+	}
+}
+
+func TestDatabaseExecutionRejectsCommentBypass(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+	for _, statement := range []string{
+		`SELECT --LOAD_FILE('placeholder')`,
+		`SELECT 1 # length(pg_read_file('placeholder'))`,
+		`SELECT 1 /* unterminated`,
+	} {
+		_, err = query(db, statement)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "safety policy")
+		_, err = exec(db, statement)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "safety policy")
+		_, err = ExecSqlsInDbs([]string{statement}, db)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "safety policy")
+	}
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSQLSecurityTokensLineComments(t *testing.T) {
+	for _, tc := range []struct {
+		statement string
+		mysql     bool
+		want      []string
+	}{
+		{"SELECT --LOAD_FILE('placeholder')", true, []string{"SELECT", "LOAD_FILE"}},
+		{"SELECT --LOAD_FILE('placeholder')", false, []string{"SELECT"}},
+		{"SELECT #pg_read_file('placeholder')", true, []string{"SELECT"}},
+		{"SELECT #pg_read_file('placeholder')", false, []string{"SELECT", "PG_READ_FILE"}},
+		{"SELECT --", true, []string{"SELECT"}},
+		{"SELECT -- comment\rSELECT 2", true, []string{"SELECT", "SELECT", "2"}},
+		{"SELECT --\tcomment\nSELECT 2", true, []string{"SELECT", "SELECT", "2"}},
+		{"SELECT --\x7fcomment\nSELECT 2", true, []string{"SELECT", "SELECT", "2"}},
+		{"SELECT #comment\nSELECT 2", true, []string{"SELECT", "SELECT", "2"}},
+	} {
+		assert.Equal(t, tc.want, sqlSecurityTokens(tc.statement, sqlQuoteStandard, tc.mysql),
+			"statement=%q mysqlComments=%t", tc.statement, tc.mysql)
+	}
+}
