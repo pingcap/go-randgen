@@ -23,6 +23,7 @@ var blockedSQLKeywords = map[string]bool{
 	"VACUUM":                    true,
 	"UNICODE_QUOTED_IDENTIFIER": true,
 	"UNTERMINATED_COMMENT":      true,
+	"UNTERMINATED_DOLLAR_QUOTE": true,
 }
 
 var blockedSQLPairs = map[string]bool{
@@ -91,11 +92,12 @@ const (
 	sqlQuoteStandard sqlQuoteMode = iota
 	sqlQuoteBackslash
 	sqlQuotePostgres
+	sqlQuotePostgresBackslash
 )
 
 func validateSQLSafety(statement string) error {
 	// Drivers disagree on quotes and line comments; every reading must be safe.
-	for _, mode := range []sqlQuoteMode{sqlQuoteStandard, sqlQuoteBackslash, sqlQuotePostgres} {
+	for _, mode := range []sqlQuoteMode{sqlQuoteStandard, sqlQuoteBackslash, sqlQuotePostgres, sqlQuotePostgresBackslash} {
 		for _, mysqlComments := range []bool{false, true} {
 			tokens := sqlSecurityTokens(statement, mode, mysqlComments)
 			for i, token := range tokens {
@@ -164,9 +166,9 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 		switch statement[offset] {
 		case '\'':
 			// PostgreSQL E-strings always use backslash escapes, even beside ordinary strings.
-			escapeString := mode == sqlQuotePostgres && offset > 0 && (statement[offset-1] == 'E' || statement[offset-1] == 'e') &&
+			escapeString := (mode == sqlQuotePostgres || mode == sqlQuotePostgresBackslash) && offset > 0 && (statement[offset-1] == 'E' || statement[offset-1] == 'e') &&
 				(offset == 1 || !isSQLWordByte(statement[offset-2]))
-			offset = skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash || escapeString)
+			offset = skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash || mode == sqlQuotePostgresBackslash || escapeString)
 		case '"', '`':
 			end := skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash)
 			if end > offset+1 {
@@ -216,6 +218,19 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			} else {
 				offset++
 			}
+		case '$':
+			if mode == sqlQuotePostgres || mode == sqlQuotePostgresBackslash {
+				if delimiter := sqlDollarQuoteDelimiter(statement[offset:]); delimiter != "" {
+					bodyStart := offset + len(delimiter)
+					end := strings.Index(statement[bodyStart:], delimiter)
+					if end < 0 {
+						return append(tokens, "UNTERMINATED_DOLLAR_QUOTE")
+					}
+					offset = bodyStart + end + len(delimiter)
+					continue
+				}
+			}
+			fallthrough
 		default:
 			if isSQLWordByte(statement[offset]) {
 				start := offset
@@ -258,4 +273,19 @@ func skipSQLLine(statement string, offset int) int {
 func isSQLWordByte(char byte) bool {
 	return char == '_' || char == '$' || char >= 'a' && char <= 'z' ||
 		char >= 'A' && char <= 'Z' || char >= '0' && char <= '9'
+}
+
+// Dollar-quote tags follow identifier rules, excluding '$' within the tag.
+func sqlDollarQuoteDelimiter(statement string) string {
+	for i := 1; i < len(statement); i++ {
+		c := statement[i]
+		if c == '$' {
+			return statement[:i+1]
+		}
+		if !(c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' ||
+			c >= 0x80 || i > 1 && c >= '0' && c <= '9') {
+			break
+		}
+	}
+	return ""
 }
