@@ -150,6 +150,11 @@ access, plugin installation, stored programs, global settings, or prepared
 statement execution. Normal table-level DDL and DML remain available for fuzz
 testing.
 
+PostgreSQL dollar-quoted strings are recognized when checking quote
+boundaries; unterminated dollar quotes are rejected. Validation checks
+alternative dialect interpretations conservatively, so ambiguous SQL may
+be rejected even if harmless for a particular database.
+
 Grammar files can still generate arbitrary table-level SQL, so use only a
 dedicated disposable test database. The database account should be scoped to
 that database and must not have administrative, filesystem, plugin, user
