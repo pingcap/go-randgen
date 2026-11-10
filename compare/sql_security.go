@@ -194,18 +194,18 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			}
 		case '/':
 			if offset+1 < len(statement) && statement[offset+1] == '*' {
-				end := strings.Index(statement[offset+2:], "*/")
+				end := skipSQLBlockComment(statement, offset, mode == sqlQuotePostgres || mode == sqlQuotePostgresBackslash)
 				if end < 0 {
 					return append(tokens, "UNTERMINATED_COMMENT")
 				}
 				contentStart := offset + 2
-				contentEnd := contentStart + end
+				contentEnd := end - 2
 				// Servers may execute or ignore the body depending on flavour and version.
 				if contentStart < contentEnd && (statement[contentStart] == '!' ||
 					contentStart+1 < contentEnd && (statement[contentStart] == 'M' || statement[contentStart] == 'm') && statement[contentStart+1] == '!') {
 					return append(tokens, "EXECUTABLE_COMMENT")
 				}
-				offset = contentEnd + 2
+				offset = end
 			} else {
 				offset++
 			}
@@ -279,4 +279,24 @@ func sqlDollarQuoteDelimiter(statement string) string {
 		}
 	}
 	return ""
+}
+
+// PostgreSQL nests block comments; other dialects stop at the first terminator.
+func skipSQLBlockComment(statement string, offset int, nested bool) int {
+	depth := 1
+	for offset += 2; offset+1 < len(statement); {
+		if statement[offset] == '/' && statement[offset+1] == '*' && nested {
+			depth++
+			offset += 2
+		} else if statement[offset] == '*' && statement[offset+1] == '/' {
+			depth--
+			offset += 2
+			if depth == 0 {
+				return offset
+			}
+		} else {
+			offset++
+		}
+	}
+	return -1
 }
