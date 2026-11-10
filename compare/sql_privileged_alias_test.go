@@ -17,7 +17,8 @@ func TestPrivilegedAliasesRejectedBeforeDriver(t *testing.T) {
 		`ALTER DATABASE placeholder SET search_path = placeholder`,
 		`ALTER GROUP placeholder ADD USER placeholder`,
 		`FLUSH PRIVILEGES`, `FLUSH TABLES WITH READ LOCK`, `KILL CONNECTION 1`,
-		`CHANGE MASTER TO MASTER_HOST = 'placeholder'`, `RESET MASTER`,
+		`CHANGE MASTER TO MASTER_HOST = 'placeholder'`,
+		`CHANGE REPLICATION SOURCE TO SOURCE_HOST = 'placeholder'`, `RESET MASTER`,
 		`SELECT pg_ls_dir('placeholder')`, `SELECT pg_stat_file('placeholder')`,
 		`SELECT pg_file_write('placeholder', 'placeholder', false)`,
 	} {
@@ -39,7 +40,8 @@ func TestPrivilegedAliasesRejectedBeforeDriver(t *testing.T) {
 		})
 	}
 	for _, statement := range []string{
-		`ALTER TABLE t ADD COLUMN c INTEGER`, `ALTER INDEX idx RENAME TO other_idx`,
+		`ALTER TABLE t ADD COLUMN c INTEGER`,
+		`ALTER TABLE t CHANGE old_column new_column INTEGER`, `ALTER INDEX idx RENAME TO other_idx`,
 		`DROP TABLE t`, `DROP INDEX idx`, `SELECT 'ALTER ROLE, DROP SCHEMA, FLUSH, KILL are text'`,
 		`SELECT 1 /* ALTER ROLE placeholder SUPERUSER */`,
 	} {
