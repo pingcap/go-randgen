@@ -69,6 +69,10 @@ related with table name or field name in this condition.
 
 the detail of yy syntax to see following *Grammar Guide*.
 
+`gentest` and `gensql` apply the SQL execution safety policy to generated
+scripts before writing any output files. If any script violates the policy,
+the command returns an error without creating or replacing its SQL files.
+
 ### gendata
 
 generate table structrue and data in user specified dsns 

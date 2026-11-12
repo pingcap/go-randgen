@@ -344,3 +344,8 @@ func skipSQLBlockComment(statement string, offset int, nested bool) int {
 	}
 	return -1
 }
+
+// ValidateSQLSafety applies the SQL execution policy to generated SQL, including scripts.
+func ValidateSQLSafety(statement string) error {
+	return validateSQLSafety(statement)
+}

@@ -2,10 +2,7 @@ package main
 
 import (
 	"errors"
-	"io/ioutil"
-	"log"
 	"math"
-	"os"
 	"strings"
 
 	"github.com/pingcap/go-randgen/gendata"
@@ -34,7 +31,7 @@ func newGentestCmd() *cobra.Command {
 
 			return nil
 		},
-		Run: gentestAction,
+		RunE: gentestAction,
 	}
 	gentestCmd.Flags().BoolVarP(&format, "format", "F", true,
 		"generate sql that is convenient for reading(not implement yet)")
@@ -45,8 +42,7 @@ func newGentestCmd() *cobra.Command {
 }
 
 // generate all sqls and write them into file
-func gentestAction(cmd *cobra.Command, args []string) {
-
+func gentestAction(cmd *cobra.Command, args []string) error {
 	var keyf gendata.Keyfun
 	var ddls []string
 
@@ -57,25 +53,19 @@ func gentestAction(cmd *cobra.Command, args []string) {
 	}
 
 	randomSqls := getRandSqls(keyf)
-	if breake {
-		if !skipZz {
-			err := ioutil.WriteFile(outPath+".data.sql",
-				[]byte(strings.Join(ddls, ";\n")+";"), os.ModePerm)
-			if err != nil {
-				log.Printf("write ddl in dist fail, %v\n", err)
-			}
-		}
-
-		dumpRandSqls(randomSqls)
-	} else {
-		allSqls := make([]string, 0)
-		allSqls = append(allSqls, ddls...)
-		allSqls = append(allSqls, randomSqls...)
-
-		err := ioutil.WriteFile(outPath+".sql",
-			[]byte(strings.Join(allSqls, ";\n")+";"), os.ModePerm)
-		if err != nil {
-			log.Printf("sql output error, %v\n", err)
-		}
+	if !breake {
+		return writeSQLArtifacts(sqlArtifact{
+			path: outPath + ".sql",
+			sql:  strings.Join(append(ddls, randomSqls...), ";\n") + ";",
+		})
 	}
+
+	random := randomSQLArtifact(randomSqls)
+	if skipZz {
+		return writeSQLArtifacts(random)
+	}
+	return writeSQLArtifacts(sqlArtifact{
+		path: outPath + ".data.sql",
+		sql:  strings.Join(ddls, ";\n") + ";",
+	}, random)
 }
