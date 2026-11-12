@@ -113,7 +113,8 @@ const (
 func validateSQLSafety(statement string) error {
 	// Drivers disagree on quotes and line comments; every reading must be safe.
 	modes := []sqlQuoteMode{sqlQuoteStandard, sqlQuoteBackslash, sqlQuotePostgres, sqlQuotePostgresBackslash}
-	if strings.Contains(statement, "[") {
+	// SQLite also differs from the standard pass when a line comment contains CR.
+	if strings.ContainsAny(statement, "[\r") {
 		modes = append(modes, sqlQuoteSQLite)
 	}
 	for _, mode := range modes {
@@ -224,7 +225,7 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			offset++
 		case '#':
 			if mysqlComments {
-				offset = skipSQLLine(statement, offset+1, true)
+				offset = skipSQLLine(statement, offset+1, false)
 			} else {
 				offset++
 			}
@@ -232,7 +233,8 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			if offset+1 < len(statement) && statement[offset+1] == '-' &&
 				(!mysqlComments || offset+2 < len(statement) &&
 					(statement[offset+2] <= ' ' || statement[offset+2] == 0x7f)) {
-				offset = skipSQLLine(statement, offset+2, mode != sqlQuoteSQLite)
+				// MySQL and SQLite end line comments at LF; PostgreSQL accepts CR too.
+				offset = skipSQLLine(statement, offset+2, !mysqlComments && mode != sqlQuoteSQLite)
 			} else {
 				offset++
 			}
