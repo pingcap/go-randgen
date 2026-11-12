@@ -27,6 +27,6 @@ func newEnglish() *English {
 }
 
 func (e *English) Gen() string {
-	// fix the `^M` character
-	return `"` + strings.ReplaceAll(e.dict[rand.Intn(len(e.dict))], "\r", "") + `"`
+	text := strings.ReplaceAll(e.dict[rand.Intn(len(e.dict))], "\r", "")
+	return "'" + strings.ReplaceAll(text, "'", "''") + "'"
 }

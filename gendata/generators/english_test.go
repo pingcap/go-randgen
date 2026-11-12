@@ -20,3 +20,8 @@ func TestEnglish(t *testing.T) {
 		assert2.NotContains(t, "\r", word)
 	}
 }
+
+func TestEnglishUsesSQLStringLiteral(t *testing.T) {
+	e := &English{dict: []string{"Don't stop\r"}}
+	assert2.Equal(t, "'Don''t stop'", e.Gen())
+}

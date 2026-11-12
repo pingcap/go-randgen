@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingcap/go-randgen/compare"
 	"github.com/pingcap/go-randgen/gendata"
 	"github.com/pingcap/go-randgen/grammar"
 	"github.com/pingcap/go-randgen/grammar/sql_generator"
@@ -138,26 +139,31 @@ func getIter(keyf gendata.Keyfun) sql_generator.SQLIterator {
 	return iterator
 }
 
-func dumpRandSqls(sqls []string) {
-	// different SQL escape characters
-	/**
-	 * MySQL: `
-	 * PostgreSQL: "
-	 */
-	if strings.EqualFold(strings.ToLower(dbms), "postgres") {
-		for i, sql := range sqls {
-			sqls[i] = strings.ReplaceAll(
-				strings.ReplaceAll(sql, "\"", "'"), // strings
-				"`", "\"")                          // column names
+type sqlArtifact struct {
+	path string
+	sql  string
+}
+
+func randomSQLArtifact(sqls []string) sqlArtifact {
+	sql := strings.Join(sqls, ";\n") + ";"
+	if strings.EqualFold(dbms, "postgres") {
+		sql = strings.ReplaceAll(strings.ReplaceAll(sql, "\"", "'"), "`", "\"")
+	}
+	return sqlArtifact{path: outPath + ".rand.sql", sql: sql}
+}
+
+func writeSQLArtifacts(artifacts ...sqlArtifact) error {
+	// Validate the exact bytes of every artifact before creating or replacing any file.
+	for _, artifact := range artifacts {
+		if err := compare.ValidateSQLSafety(artifact.sql); err != nil {
+			return err
 		}
 	}
 
-	path := outPath + ".rand.sql"
-	err := ioutil.WriteFile(path,
-		[]byte(strings.Join(sqls, ";\n")+";"), os.ModePerm)
-	if err != nil {
-		log.Printf("write random sql in dist fail, %v\n", err)
+	for _, artifact := range artifacts {
+		if err := ioutil.WriteFile(artifact.path, []byte(artifact.sql), os.ModePerm); err != nil {
+			return err
+		}
 	}
-
-	log.Printf("dump random sqls in %s ok\n", path)
+	return nil
 }

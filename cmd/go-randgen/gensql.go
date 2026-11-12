@@ -39,7 +39,7 @@ func newGensqlCmd() *cobra.Command {
 			}
 			return nil
 		},
-		Run: gensqlAction,
+		RunE: gensqlAction,
 	}
 
 	gensqlCmd.Flags().StringVar(&gensqlDsn, "dsn", "", "database DSN (deprecated: use --dsn-file or GO_RANDGEN_DSN)")
@@ -49,13 +49,14 @@ func newGensqlCmd() *cobra.Command {
 	return gensqlCmd
 }
 
-func gensqlAction(cmd *cobra.Command, args []string) {
+func gensqlAction(cmd *cobra.Command, args []string) error {
 	db, err := compare.OpenDBWithRetry(dbms, gensqlDsn)
 	log.Println("DBMS is:", dbms)
 
 	if err != nil {
 		log.Fatalf("connect to dsn %s fail, %v\n", compare.RedactDSN(gensqlDsn), err)
 	}
+	defer db.Close()
 
 	log.Println("Cache database meta info...")
 	keyf, err := gendata.ByDb(db, dbms)
@@ -64,6 +65,5 @@ func gensqlAction(cmd *cobra.Command, args []string) {
 	}
 	log.Println("Cache database meta info ok, start generate sqls by yy")
 
-	randSqls := getRandSqls(keyf)
-	dumpRandSqls(randSqls)
+	return writeSQLArtifacts(randomSQLArtifact(getRandSqls(keyf)))
 }
