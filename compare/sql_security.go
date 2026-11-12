@@ -107,12 +107,20 @@ const (
 	sqlQuoteBackslash
 	sqlQuotePostgres
 	sqlQuotePostgresBackslash
+	sqlQuoteSQLite
 )
 
 func validateSQLSafety(statement string) error {
 	// Drivers disagree on quotes and line comments; every reading must be safe.
-	for _, mode := range []sqlQuoteMode{sqlQuoteStandard, sqlQuoteBackslash, sqlQuotePostgres, sqlQuotePostgresBackslash} {
+	modes := []sqlQuoteMode{sqlQuoteStandard, sqlQuoteBackslash, sqlQuotePostgres, sqlQuotePostgresBackslash}
+	if strings.Contains(statement, "[") {
+		modes = append(modes, sqlQuoteSQLite)
+	}
+	for _, mode := range modes {
 		for _, mysqlComments := range []bool{false, true} {
+			if mode == sqlQuoteSQLite && mysqlComments {
+				continue
+			}
 			tokens := sqlSecurityTokens(statement, mode, mysqlComments)
 			for i, token := range tokens {
 				if token == "CREATE" && (i == 0 || tokens[i-1] == ";") && !allowedCreateStatement(tokens[i:]) {
@@ -185,15 +193,38 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 		case '"', '`':
 			end := skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash)
 			if end > offset+1 {
-				tokens = append(tokens, sqlSecurityTokens(statement[offset+1:end-1], mode, mysqlComments)...)
+				identifierMode := mode
+				if mode == sqlQuoteSQLite {
+					identifierMode = sqlQuoteStandard
+				}
+				tokens = append(tokens, sqlSecurityTokens(statement[offset+1:end-1], identifierMode, mysqlComments)...)
 			}
 			offset = end
+		case '[':
+			if mode != sqlQuoteSQLite {
+				offset++
+				continue
+			}
+			// SQLite ends a bracket identifier at the first closing bracket.
+			start := offset + 1
+			length := strings.IndexByte(statement[start:], ']')
+			if length < 0 {
+				// SQLite cannot parse past this invalid token. Other dialect passes still run.
+				return tokens
+			}
+			name := strings.ToUpper(statement[start : start+length])
+			if blockedSQLFunctions[name] {
+				tokens = append(tokens, name)
+			} else {
+				tokens = append(tokens, "[]")
+			}
+			offset = start + length + 1
 		case ';':
 			tokens = append(tokens, ";")
 			offset++
 		case '#':
 			if mysqlComments {
-				offset = skipSQLLine(statement, offset+1)
+				offset = skipSQLLine(statement, offset+1, true)
 			} else {
 				offset++
 			}
@@ -201,7 +232,7 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			if offset+1 < len(statement) && statement[offset+1] == '-' &&
 				(!mysqlComments || offset+2 < len(statement) &&
 					(statement[offset+2] <= ' ' || statement[offset+2] == 0x7f)) {
-				offset = skipSQLLine(statement, offset+2)
+				offset = skipSQLLine(statement, offset+2, mode != sqlQuoteSQLite)
 			} else {
 				offset++
 			}
@@ -267,8 +298,8 @@ func skipSQLQuoted(statement string, offset int, quote byte, backslashEscapes bo
 	return len(statement)
 }
 
-func skipSQLLine(statement string, offset int) int {
-	for offset < len(statement) && statement[offset] != '\n' && statement[offset] != '\r' {
+func skipSQLLine(statement string, offset int, stopAtCR bool) int {
+	for offset < len(statement) && statement[offset] != '\n' && (!stopAtCR || statement[offset] != '\r') {
 		offset++
 	}
 	return offset
