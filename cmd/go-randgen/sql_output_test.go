@@ -71,3 +71,32 @@ func TestOfflineSQLValidatesRenderedPostgresOutput(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "SELECT 'PRAGMA';", string(sql))
 }
+
+func TestOfflineSQLRejectsPrivilegedEquivalents(t *testing.T) {
+	dir, err := ioutil.TempDir("", "randgen-sql-policy")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	existing := filepath.Join(dir, "existing.sql")
+	const original = "SELECT 1;"
+	require.NoError(t, ioutil.WriteFile(existing, []byte(original), 0600))
+	output := filepath.Join(dir, "new.sql")
+	for _, statement := range []string{
+		"SELECT * FROM mysql.user",
+		"SELECT * FROM pg_catalog.pg_authid",
+		"SELECT set_config",
+		"CREATE TABLE sample (id INT) ENGINE='FEDERATED'",
+	} {
+		err := writeSQLArtifacts(
+			sqlArtifact{path: existing, sql: "SELECT 2;"},
+			sqlArtifact{path: output, sql: statement},
+		)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "blocked by safety policy")
+		content, err := ioutil.ReadFile(existing)
+		require.NoError(t, err)
+		assert.Equal(t, original, string(content))
+		_, err = os.Stat(output)
+		assert.True(t, os.IsNotExist(err))
+	}
+}

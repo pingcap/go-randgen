@@ -10,6 +10,7 @@ var blockedSQLKeywords = map[string]bool{
 	"BACKUP":                    true,
 	"CALL":                      true,
 	"COPY":                      true,
+	"CONNECTION":                true,
 	"FLUSH":                     true,
 	"KILL":                      true,
 	"RESET":                     true,
@@ -33,6 +34,8 @@ var blockedSQLKeywords = map[string]bool{
 var blockedSQLPairs = map[string]bool{
 	"CHANGE MASTER":      true,
 	"CHANGE REPLICATION": true,
+	"ENGINE FEDERATED":   true,
+	"MYSQL .":            true,
 	"ALTER EVENT":        true,
 	"ALTER ROLE":         true,
 	"ALTER SCHEMA":       true,
@@ -110,6 +113,21 @@ var blockedSQLFunctions = map[string]bool{
 	"PG_WRITE_FILE":       true,
 	"SYS_EVAL":            true,
 	"SYS_EXEC":            true,
+
+	"PG_LS_LOGDIR":            true,
+	"PG_LS_TMPDIR":            true,
+	"PG_LS_ARCHIVE_STATUSDIR": true,
+	"PG_SLEEP":                true,
+	"PG_SLEEP_FOR":            true,
+	"PG_SLEEP_UNTIL":          true,
+	"SET_CONFIG":              true,
+}
+
+// Reject references conservatively, including reads that could expose credentials.
+var blockedSQLCatalogs = map[string]bool{
+	"PG_AUTHID":       true,
+	"PG_AUTH_MEMBERS": true,
+	"PG_SHADOW":       true,
 }
 
 type sqlQuoteMode int
@@ -139,7 +157,7 @@ func validateSQLSafety(statement string) error {
 				if token == "CREATE" && (i == 0 || tokens[i-1] == ";") && !allowedCreateStatement(tokens[i:]) {
 					return fmt.Errorf("SQL statement blocked by safety policy: CREATE operation")
 				}
-				if blockedSQLKeywords[token] || blockedSQLFunctions[token] {
+				if blockedSQLKeywords[token] || blockedSQLFunctions[token] || blockedSQLCatalogs[token] {
 					return fmt.Errorf("SQL statement blocked by safety policy: %s operation", token)
 				}
 				if i+1 < len(tokens) {
@@ -202,9 +220,21 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			// PostgreSQL E-strings always use backslash escapes, even beside ordinary strings.
 			escapeString := (mode == sqlQuotePostgres || mode == sqlQuotePostgresBackslash) && offset > 0 && (statement[offset-1] == 'E' || statement[offset-1] == 'e') &&
 				(offset == 1 || !isSQLWordByte(statement[offset-2]))
-			offset = skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash || mode == sqlQuotePostgresBackslash || escapeString)
+			end := skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash || mode == sqlQuotePostgresBackslash || escapeString)
+			// MySQL accepts a string literal as the storage engine name.
+			if end > offset+1 && len(tokens) > 0 && tokens[len(tokens)-1] == "ENGINE" &&
+				isSQLFederatedEngineName(statement[offset+1:end-1]) {
+				tokens = append(tokens, "FEDERATED")
+			}
+			offset = end
 		case '"', '`':
 			end := skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash)
+			if end > offset+1 && len(tokens) > 0 && tokens[len(tokens)-1] == "ENGINE" &&
+				isSQLFederatedEngineName(statement[offset+1:end-1]) {
+				tokens = append(tokens, "FEDERATED")
+				offset = end
+				continue
+			}
 			if end > offset+1 {
 				identifierMode := mode
 				if mode == sqlQuoteSQLite {
@@ -226,7 +256,7 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 				return tokens
 			}
 			name := strings.ToUpper(statement[start : start+length])
-			if blockedSQLFunctions[name] {
+			if blockedSQLFunctions[name] || blockedSQLCatalogs[name] || name == "MYSQL" {
 				tokens = append(tokens, name)
 			} else {
 				tokens = append(tokens, "[]")
@@ -234,6 +264,10 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			offset = start + length + 1
 		case ';':
 			tokens = append(tokens, ";")
+			offset++
+		case '.':
+			// Preserve qualification when checking protected system schemas.
+			tokens = append(tokens, ".")
 			offset++
 		case '#':
 			if mysqlComments {
@@ -310,6 +344,11 @@ func skipSQLQuoted(statement string, offset int, quote byte, backslashEscapes bo
 		}
 	}
 	return len(statement)
+}
+
+func isSQLFederatedEngineName(name string) bool {
+	// Conservatively cover MySQL escape readings without decoding other literals.
+	return strings.EqualFold(strings.ReplaceAll(name, "\\", ""), "FEDERATED")
 }
 
 func skipSQLLine(statement string, offset int, stopAtCR bool) int {

@@ -154,6 +154,16 @@ access, plugin installation, stored programs, global settings, or prepared
 statement execution. Normal table-level DDL and DML remain available for fuzz
 testing.
 
+The policy also rejects qualified access to the MySQL system schema and
+references to PostgreSQL authentication catalogs (`pg_authid`,
+`pg_auth_members`, and `pg_shadow`). Matching catalog names are reserved
+even when used as ordinary identifiers. `set_config`, server directory
+listing and sleep functions, FEDERATED engine options, and the
+`CONNECTION` keyword are also restricted. Use test tables with other names
+for workloads that would otherwise match these rules. The engine-name check
+also applies to matching token sequences outside table options and
+conservatively accounts for backslash escapes.
+
 PostgreSQL dollar-quoted strings are recognized when checking quote
 boundaries; unterminated dollar quotes are rejected. Validation checks
 alternative dialect interpretations conservatively, so ambiguous SQL may
