@@ -130,6 +130,22 @@ var blockedSQLFunctions = map[string]bool{
 	"PG_SLEEP_FOR":            true,
 	"PG_SLEEP_UNTIL":          true,
 	"SET_CONFIG":              true,
+
+	// XML mappings execute SQL or resolve object names hidden in literal arguments.
+	"QUERY_TO_XML":                  true,
+	"QUERY_TO_XMLSCHEMA":            true,
+	"QUERY_TO_XML_AND_XMLSCHEMA":    true,
+	"TABLE_TO_XML":                  true,
+	"TABLE_TO_XMLSCHEMA":            true,
+	"TABLE_TO_XML_AND_XMLSCHEMA":    true,
+	"SCHEMA_TO_XML":                 true,
+	"SCHEMA_TO_XMLSCHEMA":           true,
+	"SCHEMA_TO_XML_AND_XMLSCHEMA":   true,
+	"DATABASE_TO_XML":               true,
+	"DATABASE_TO_XMLSCHEMA":         true,
+	"DATABASE_TO_XML_AND_XMLSCHEMA": true,
+	"CURSOR_TO_XML":                 true,
+	"CURSOR_TO_XMLSCHEMA":           true,
 }
 
 // Reject references conservatively, including reads that could expose credentials.
