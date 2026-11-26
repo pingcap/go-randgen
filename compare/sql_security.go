@@ -190,6 +190,9 @@ func validateSQLSafety(statement string) error {
 					}
 				}
 			}
+			if err := validateSQLAuthorization(sqlSecurityTokens(statement, mode, mysqlComments, true)); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -223,7 +226,8 @@ func allowedCreateStatement(tokens []string) bool {
 
 // sqlSecurityTokens returns unquoted SQL words. Ordinary comments and quoted
 // values are ignored; version-dependent executable comments are rejected.
-func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) []string {
+func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool, syntax ...bool) []string {
+	keepSyntax := len(syntax) > 0 && syntax[0]
 	var tokens []string
 	for offset := 0; offset < len(statement); {
 		if (statement[offset] == 'U' || statement[offset] == 'u') && offset+2 < len(statement) &&
@@ -246,6 +250,11 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			offset = end
 		case '"', '`':
 			end := skipSQLQuoted(statement, offset, statement[offset], mode == sqlQuoteBackslash)
+			if keepSyntax && end > offset+1 {
+				tokens = append(tokens, "\""+statement[offset+1:end-1])
+				offset = end
+				continue
+			}
 			if end > offset+1 && len(tokens) > 0 && tokens[len(tokens)-1] == "ENGINE" &&
 				isSQLFederatedEngineName(statement[offset+1:end-1]) {
 				tokens = append(tokens, "FEDERATED")
@@ -257,7 +266,7 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 				if mode == sqlQuoteSQLite {
 					identifierMode = sqlQuoteStandard
 				}
-				for _, token := range sqlSecurityTokens(statement[offset+1:end-1], identifierMode, mysqlComments) {
+				for _, token := range sqlSecurityTokens(statement[offset+1:end-1], identifierMode, mysqlComments, syntax...) {
 					// Quoted content cannot introduce a statement boundary.
 					if token != ";" {
 						tokens = append(tokens, token)
@@ -278,7 +287,12 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 				return tokens
 			}
 			name := strings.ToUpper(statement[start : start+length])
-			if blockedSQLFunctions[name] || blockedSQLCatalogs[name] || name == "MYSQL" {
+			if keepSyntax {
+				tokens = append(tokens, "\""+statement[start:start+length])
+				offset = start + length + 1
+				continue
+			}
+			if blockedSQLFunctions[name] || blockedSQLCatalogs[name] || allowedSQLCalls[name] || name == "MYSQL" {
 				tokens = append(tokens, name)
 			} else {
 				tokens = append(tokens, "[]")
@@ -286,6 +300,11 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			offset = start + length + 1
 		case ';':
 			tokens = append(tokens, ";")
+			offset++
+		case '(', ')', ',', '=', '+', '*', '%', '<', '>', '!', '|', '&', ':', '?', '~', '@':
+			if keepSyntax {
+				tokens = append(tokens, string(statement[offset]))
+			}
 			offset++
 		case '.':
 			// Preserve qualification when checking protected system schemas.
@@ -295,6 +314,9 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			if mysqlComments {
 				offset = skipSQLLine(statement, offset+1, false)
 			} else {
+				if keepSyntax {
+					tokens = append(tokens, "#")
+				}
 				offset++
 			}
 		case '-':
@@ -304,6 +326,9 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 				// MySQL and SQLite end line comments at LF; PostgreSQL accepts CR too.
 				offset = skipSQLLine(statement, offset+2, !mysqlComments && mode != sqlQuoteSQLite)
 			} else {
+				if keepSyntax {
+					tokens = append(tokens, "-")
+				}
 				offset++
 			}
 		case '/':
@@ -321,6 +346,9 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 				}
 				offset = end
 			} else {
+				if keepSyntax {
+					tokens = append(tokens, "/")
+				}
 				offset++
 			}
 		case '$':
@@ -337,12 +365,17 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 			}
 			fallthrough
 		default:
-			if isSQLWordByte(statement[offset]) {
+			if isSQLWordByte(statement[offset]) || keepSyntax && statement[offset] >= 0x80 {
 				start := offset
-				for offset < len(statement) && isSQLWordByte(statement[offset]) {
+				for offset < len(statement) && (isSQLWordByte(statement[offset]) || keepSyntax && statement[offset] >= 0x80) {
 					offset++
 				}
-				tokens = append(tokens, strings.ToUpper(statement[start:offset]))
+				name := statement[start:offset]
+				if keepSyntax && strings.IndexFunc(name, func(char rune) bool { return char >= 0x80 }) >= 0 {
+					tokens = append(tokens, "\x00"+name)
+				} else {
+					tokens = append(tokens, strings.ToUpper(name))
+				}
 			} else {
 				offset++
 			}

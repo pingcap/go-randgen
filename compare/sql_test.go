@@ -119,7 +119,7 @@ func getMockDb(t *testing.T, expects []string) *sql.DB {
 func getSql(num int) []string {
 	sqls := make([]string, 0, num)
 	for i := 0; i < num; i++ {
-		sqls = append(sqls, fmt.Sprintf("exec %d", i))
+		sqls = append(sqls, fmt.Sprintf("SELECT %d", i))
 	}
 	return sqls
 }
@@ -141,7 +141,7 @@ func TestExecSqlsInDbs(t *testing.T) {
 		goroutineNum := runtime.NumGoroutine()
 		sql, err := ExecSqlsInDbs(expectSqls, mockdb0, mockdb1)
 		assert.Equal(t, "mock err", err.Error())
-		assert.Equal(t, "exec 10", sql)
+		assert.Equal(t, "SELECT 10", sql)
 		// test  gorountine leak
 		assert.Equal(t, goroutineNum, runtime.NumGoroutine())
 	})
