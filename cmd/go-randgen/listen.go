@@ -11,6 +11,8 @@ import (
 )
 
 var port int
+var graphTokenFile string
+var graphToken string
 
 func newListenCmd() *cobra.Command {
 	listenCmd := &cobra.Command{
@@ -20,22 +22,31 @@ func newListenCmd() *cobra.Command {
 			if yyPath == "" {
 				return errors.New("yy are required")
 			}
-			return nil
+			var err error
+			graphToken, err = resolveCredential(credentialInput{
+				filePath: graphTokenFile,
+				envName:  "GO_RANDGEN_GRAPH_TOKEN",
+				label:    "graph access token",
+			})
+			return err
 		},
 		Run: listenAction,
 	}
 
 	listenCmd.Flags().IntVar(&port, "port", 43000, "the port to listen")
+	listenCmd.Flags().StringVar(&graphTokenFile, "token-file", "", "owner-only file containing the graph access token")
 
 	return listenCmd
 }
 
 func listenAction(cmd *cobra.Command, args []string) {
-	handler, err := view.Graph(loadYy())
+	handler, err := view.Graph(loadYy(), graphToken)
 	if err != nil {
 		log.Fatalf("Fatal Error: %v\n", err)
 	}
-	http.HandleFunc("/graph", handler)
-	log.Printf("listen on :%d\n", port)
-	log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/graph", handler)
+	address := fmt.Sprintf("127.0.0.1:%d", port)
+	log.Printf("listen on %s\n", address)
+	log.Fatalln(http.ListenAndServe(address, mux))
 }

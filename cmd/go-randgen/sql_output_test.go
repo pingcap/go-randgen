@@ -84,6 +84,7 @@ func TestOfflineSQLRejectsPrivilegedEquivalents(t *testing.T) {
 	output := filepath.Join(dir, "new.sql")
 	for _, statement := range []string{
 		"SELECT * FROM mysql.user",
+		"SELECT policy_test_function()",
 		"SELECT * FROM pg_catalog.pg_authid",
 		"SELECT set_config",
 		"SELECT pg_catalog.query_to_xml('SELECT 1', false, false, '')",

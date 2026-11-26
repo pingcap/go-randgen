@@ -1,7 +1,10 @@
 package view
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/pingcap/go-randgen/grammar"
@@ -76,7 +79,11 @@ func productionToJson(productions []*yacc_parser.Production,
 	return jsonBytes, nil
 }
 
-func Graph(yy string) (http.HandlerFunc, error) {
+func Graph(yy string, token ...string) (http.HandlerFunc, error) {
+	if len(token) != 1 || token[0] == "" {
+		return nil, fmt.Errorf("a graph access token is required")
+	}
+	authorization := sha256.Sum256([]byte("Bearer " + token[0]))
 	_, productions, pMap, err := grammar.Parse(yy)
 	if err != nil {
 		return nil, err
@@ -88,8 +95,18 @@ func Graph(yy string) (http.HandlerFunc, error) {
 	}
 
 	return func(writer http.ResponseWriter, request *http.Request) {
-		writer.Header().Set("Access-Control-Allow-Origin", "*")
-		writer.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+		writer.Header().Set("Cache-Control", "no-store")
+		provided := sha256.Sum256([]byte(request.Header.Get("Authorization")))
+		if subtle.ConstantTimeCompare(provided[:], authorization[:]) != 1 {
+			writer.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(writer, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if request.Method != http.MethodGet {
+			writer.Header().Set("Allow", http.MethodGet)
+			http.Error(writer, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		writer.Header().Set("content-type", "application/json")
 		writer.Write(jsonBytes)
 	}, nil

@@ -47,7 +47,7 @@ func TestSQLSafetyAllowsOrdinarySetStatements(t *testing.T) {
 		"SET @first = 1, @second = 2",
 		"SET SESSION sql_mode = 'ANSI'",
 		"SET @@session.sql_mode = 'ANSI'",
-		"SET LOCAL search_path = public",
+		"SET LOCAL TIME ZONE 'UTC'",
 		"SET @value = 'GLOBAL PERSIST PERSIST_ONLY PASSWORD ROLE AUTHORIZATION'",
 		"SET @first = 1 /* GLOBAL */; SELECT global FROM sample",
 		"SELECT 1; SET @first = 1, @second = 2; SELECT role FROM sample",

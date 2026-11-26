@@ -193,6 +193,22 @@ list. Within `SET`, the policy reserves the tokens `GLOBAL`, `PERSIST`,
 `PERSIST_ONLY`, `PASSWORD`, `ROLE`, and `AUTHORIZATION`. Matching user-variable
 names or expressions can also be rejected by this conservative check.
 
+Generated SQL also requires an approved statement type and an approved
+function name. The allowed set covers common table workloads, scalar
+expressions, aggregates, and window functions. Custom functions, quoted or
+schema-qualified function calls, and unsupported syntax are rejected.
+Session settings also use an allow-list, including ordinary SQL mode,
+autocommit, time-zone, character-set, and transaction settings. Changes to
+function lookup or session identity are outside this set. The lists are
+defined in `compare/sql_authorization.go`. Continue to use a disposable
+database and an account restricted to its test tables.
+
+The `listen` command binds to `127.0.0.1` and requires a graph access token
+from `--token-file` (a file with mode 0400 or 0600) or
+`GO_RANDGEN_GRAPH_TOKEN`. Graph clients must send an
+`Authorization: Bearer <token>` header. The `view.Graph` library function
+also requires the token as its second argument.
+
 PostgreSQL dollar-quoted strings are recognized when checking quote
 boundaries; unterminated dollar quotes are rejected. Validation checks
 alternative dialect interpretations conservatively, so ambiguous SQL may
