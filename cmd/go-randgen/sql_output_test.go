@@ -86,6 +86,8 @@ func TestOfflineSQLRejectsPrivilegedEquivalents(t *testing.T) {
 		"SELECT * FROM pg_catalog.pg_authid",
 		"SELECT set_config",
 		"CREATE TABLE sample (id INT) ENGINE='FEDERATED'",
+		"SET @first = 1, GLOBAL policy_test_option = DEFAULT",
+		"SET @first = 1, @@global.policy_test_option = DEFAULT",
 	} {
 		err := writeSQLArtifacts(
 			sqlArtifact{path: existing, sql: "SELECT 2;"},

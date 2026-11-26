@@ -164,6 +164,12 @@ for workloads that would otherwise match these rules. The engine-name check
 also applies to matching token sequences outside table options and
 conservatively accounts for backslash escapes.
 
+Every assignment in a `SET` statement is checked for global or persistent
+scope and identity changes, including later assignments in a comma-separated
+list. Within `SET`, the policy reserves the tokens `GLOBAL`, `PERSIST`,
+`PERSIST_ONLY`, `PASSWORD`, `ROLE`, and `AUTHORIZATION`. Matching user-variable
+names or expressions can also be rejected by this conservative check.
+
 PostgreSQL dollar-quoted strings are recognized when checking quote
 boundaries; unterminated dollar quotes are rejected. Validation checks
 alternative dialect interpretations conservatively, so ambiguous SQL may

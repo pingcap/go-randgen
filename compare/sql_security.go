@@ -92,6 +92,15 @@ var blockedSQLTriples = map[string]bool{
 	"SET SESSION ROLE":          true,
 }
 
+var blockedSQLSetTokens = map[string]bool{
+	"GLOBAL":        true,
+	"PERSIST":       true,
+	"PERSIST_ONLY":  true,
+	"PASSWORD":      true,
+	"ROLE":          true,
+	"AUTHORIZATION": true,
+}
+
 var blockedSQLFunctions = map[string]bool{
 	"DBLINK":              true,
 	"DBLINK_CONNECT":      true,
@@ -153,7 +162,15 @@ func validateSQLSafety(statement string) error {
 				continue
 			}
 			tokens := sqlSecurityTokens(statement, mode, mysqlComments)
+			setStatement := false
 			for i, token := range tokens {
+				if i == 0 || tokens[i-1] == ";" {
+					setStatement = token == "SET"
+				}
+				// Scope keywords can appear on any assignment in a SET statement.
+				if setStatement && blockedSQLSetTokens[token] {
+					return fmt.Errorf("SQL statement blocked by safety policy: SET %s operation", token)
+				}
 				if token == "CREATE" && (i == 0 || tokens[i-1] == ";") && !allowedCreateStatement(tokens[i:]) {
 					return fmt.Errorf("SQL statement blocked by safety policy: CREATE operation")
 				}
@@ -240,7 +257,12 @@ func sqlSecurityTokens(statement string, mode sqlQuoteMode, mysqlComments bool) 
 				if mode == sqlQuoteSQLite {
 					identifierMode = sqlQuoteStandard
 				}
-				tokens = append(tokens, sqlSecurityTokens(statement[offset+1:end-1], identifierMode, mysqlComments)...)
+				for _, token := range sqlSecurityTokens(statement[offset+1:end-1], identifierMode, mysqlComments) {
+					// Quoted content cannot introduce a statement boundary.
+					if token != ";" {
+						tokens = append(tokens, token)
+					}
+				}
 			}
 			offset = end
 		case '[':
