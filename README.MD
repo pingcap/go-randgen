@@ -182,6 +182,11 @@ for workloads that would otherwise match these rules. The engine-name check
 also applies to matching token sequences outside table options and
 conservatively accounts for backslash escapes.
 
+PostgreSQL XML mapping functions for queries, tables, schemas, databases, and
+cursors are also restricted, including their XML Schema variants. Their names
+are reserved as identifiers. Ordinary string literals and XML value functions
+such as `xmlconcat`, `xmlparse`, and `xpath` remain available.
+
 Every assignment in a `SET` statement is checked for global or persistent
 scope and identity changes, including later assignments in a comma-separated
 list. Within `SET`, the policy reserves the tokens `GLOBAL`, `PERSIST`,

@@ -86,6 +86,7 @@ func TestOfflineSQLRejectsPrivilegedEquivalents(t *testing.T) {
 		"SELECT * FROM mysql.user",
 		"SELECT * FROM pg_catalog.pg_authid",
 		"SELECT set_config",
+		"SELECT pg_catalog.query_to_xml('SELECT 1', false, false, '')",
 		"CREATE TABLE sample (id INT) ENGINE='FEDERATED'",
 		"SET @first = 1, GLOBAL policy_test_option = DEFAULT",
 		"SET @first = 1, @@global.policy_test_option = DEFAULT",
