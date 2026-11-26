@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -100,5 +101,83 @@ func TestOfflineSQLRejectsPrivilegedEquivalents(t *testing.T) {
 		assert.Equal(t, original, string(content))
 		_, err = os.Stat(output)
 		assert.True(t, os.IsNotExist(err))
+	}
+}
+
+func TestSQLArtifactsRejectClientSyntax(t *testing.T) {
+	dir, err := ioutil.TempDir("", "randgen-client-syntax")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+	existing := filepath.Join(dir, "existing.sql")
+	output := filepath.Join(dir, "new.sql")
+	const original = "SELECT 1;"
+	require.NoError(t, ioutil.WriteFile(existing, []byte(original), 0600))
+
+	statements := []string{
+		`\p`, `SELECT 1;\p`, `SELECT '\p'`, `SELECT "\p"`, "SELECT `\\p`",
+		`SELECT $$\p$$`, "-- \\p\nSELECT 1", `/* \p */ SELECT 1`,
+		`/*+ \p */ SELECT 1`, `SELECT 'escaped\nvalue'`, `SELECT 'C:\data'`,
+		".policy_test", " \t.policy_test", "SELECT 1;\n.policy_test",
+		"SELECT 1;\r\n \t.policy_test", "SELECT 1;\n\v\f.policy_test",
+		"SELECT 'first\n.policy_test'", "/*\n.policy_test\n*/ SELECT 1",
+	}
+	for _, command := range []string{
+		"system", "source", "pager", "tee", "connect", "edit", "delimiter", "charset", "ssl_session_data_print",
+	} {
+		for _, prefix := range []string{"", " \t", "SELECT 1;", "SELECT 1;\n", "SELECT 1;\r\n", "SELECT 1;\v\f"} {
+			statements = append(statements, prefix+command+" inert_token")
+		}
+		statements = append(statements, strings.ToUpper(command)+";", "SELECT '"+command+"'", "/* "+command+" */ SELECT 1")
+	}
+	for _, statement := range statements {
+		t.Run(statement, func(t *testing.T) {
+			err := writeSQLArtifacts(sqlArtifact{path: existing, sql: "SELECT 2;"}, sqlArtifact{path: output, sql: statement})
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "SQL artifact blocked by safety policy")
+			assert.NotContains(t, err.Error(), "inert_token")
+			content, err := ioutil.ReadFile(existing)
+			require.NoError(t, err)
+			assert.Equal(t, original, string(content))
+			_, err = os.Stat(output)
+			assert.True(t, os.IsNotExist(err))
+		})
+	}
+	require.NoError(t, writeSQLArtifacts(sqlArtifact{path: output, sql: "SELECT .5, system_value, source_id, 'teetime' FROM test_table;"}))
+}
+
+func TestOfflineSQLCommandsRejectClientSyntax(t *testing.T) {
+	dir, err := ioutil.TempDir("", "randgen-client-output")
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+	grammar := filepath.Join(dir, "test.yy")
+	for _, statement := range []string{`SELECT "\p"`, "source inert_token", ".policy_test"} {
+		require.NoError(t, ioutil.WriteFile(grammar, []byte("query:\n    "+statement+"\n"), 0600))
+		for _, tc := range []struct {
+			name     string
+			args     []string
+			suffixes []string
+		}{
+			{"combined", []string{"gentest"}, []string{".sql"}},
+			{"split", []string{"gentest", "-B"}, []string{".data.sql", ".rand.sql"}},
+			{"skip-zz", []string{"gentest", "-B", "--skip-zz"}, []string{".rand.sql"}},
+			{"postgres", []string{"gentest", "-B", "--skip-zz", "--dbms", "postgres"}, []string{".rand.sql"}},
+			{"metadata", []string{"gensql", "--dbms", "sqlite3", "--dsn", ":memory:"}, []string{".rand.sql"}},
+		} {
+			t.Run(statement+"/"+tc.name, func(t *testing.T) {
+				output := filepath.Join(dir, tc.name)
+				for _, suffix := range tc.suffixes {
+					require.NoError(t, ioutil.WriteFile(output+suffix, []byte("SELECT 1;"), 0600))
+				}
+				reInitCmd()
+				_, err := executeCommand(rootCmd, append(tc.args, "-Y", grammar, "-Q", "1", "-O", output)...)
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "SQL artifact blocked by safety policy")
+				for _, suffix := range tc.suffixes {
+					content, err := ioutil.ReadFile(output + suffix)
+					require.NoError(t, err)
+					assert.Equal(t, "SELECT 1;", string(content))
+				}
+			})
+		}
 	}
 }

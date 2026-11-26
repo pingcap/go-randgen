@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -152,9 +153,16 @@ func randomSQLArtifact(sqls []string) sqlArtifact {
 	return sqlArtifact{path: outPath + ".rand.sql", sql: sql}
 }
 
+// Reserve client commands even in quotes/comments: replay clients can parse them
+// differently from the database driver or the SQL safety checker.
+var artifactClientCommand = regexp.MustCompile(`(?i)(^|[^a-z0-9_$])(system|source|pager|tee|connect|edit|delimiter|charset|ssl_session_data_print)([^a-z0-9_$]|$)|(?m:^[[:space:]]*\.)`)
+
 func writeSQLArtifacts(artifacts ...sqlArtifact) error {
 	// Validate the exact bytes of every artifact before creating or replacing any file.
 	for _, artifact := range artifacts {
+		if strings.Contains(artifact.sql, `\`) || artifactClientCommand.MatchString(artifact.sql) {
+			return fmt.Errorf("SQL artifact blocked by safety policy: client command syntax")
+		}
 		if err := compare.ValidateSQLSafety(artifact.sql); err != nil {
 			return err
 		}
