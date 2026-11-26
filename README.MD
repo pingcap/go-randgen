@@ -73,6 +73,24 @@ the detail of yy syntax to see following *Grammar Guide*.
 scripts before writing any output files. If any script violates the policy,
 the command returns an error without creating or replacing its SQL files.
 
+Saved scripts additionally reject every backslash byte and the standalone
+client-command words `system`, `source`, `pager`, `tee`, `connect`, `edit`,
+`delimiter`, `charset`, and `ssl_session_data_print` (case-insensitive),
+including occurrences in quoted strings, identifiers, and comments. A dot at
+the first non-whitespace position of any line is also rejected, preventing
+[SQLite CLI dot-commands](https://www.sqlite.org/cli.html). This
+conservative rule avoids depending on replay-client versions, options, or
+quoting rules: [mysql client commands](https://dev.mysql.com/doc/refman/8.4/en/mysql-commands.html)
+and [psql meta-commands](https://www.postgresql.org/docs/current/app-psql.html)
+can perform local operations outside the Lua environment. Consequently,
+backslash-escaped strings, Windows-style paths, regular expressions containing
+backslashes, data containing these standalone words, and multiline strings
+or comments with a line whose first non-whitespace character is a dot cannot
+be exported.
+Use SQL-standard doubled quotes, data without backslashes, and other names
+where appropriate. Database-driver execution retains its existing SQL policy;
+this additional restriction applies only to saved artifacts.
+
 ### gendata
 
 generate table structrue and data in user specified dsns 
